@@ -54,8 +54,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/cyber-security-prime/cyber-security-prime.git
-cd cyber-security-prime
+git clone https://github.com/AaronGrace978/SecurityPrime.git
+cd SecurityPrime
 
 # Install dependencies
 npm install
@@ -88,7 +88,7 @@ npm run check
 ## 📁 Project Structure
 
 ```
-cyber-security-prime/
+SecurityPrime/
 ├── src-tauri/                 # Rust/Tauri backend
 │   ├── src/
 │   │   ├── main.rs           # App entry point
@@ -197,4 +197,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 [Website](https://cybersecurityprime.dev) • [Documentation](https://docs.cybersecurityprime.dev) • [Discord](https://discord.gg/cybersecurityprime)
 
 </div>
-

@@ -7,6 +7,10 @@
 ![Svelte](https://img.shields.io/badge/Svelte-4.0-ff3e00?style=for-the-badge&logo=svelte&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-2021-000000?style=for-the-badge&logo=rust&logoColor=white)
 
+
+<img width="1024" height="1024" alt="Generated_image" src="https://github.com/user-attachments/assets/8da1e56f-a7eb-4ddd-ad68-69395e0dac16" />
+
+
 **A powerful, modular, all-in-one cybersecurity desktop application**
 
 *Cyberpunk 2077 inspired design • Built with Tauri & Svelte • Cross-platform*

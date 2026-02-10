@@ -1,0 +1,31 @@
+{
+  "name": "cyber-security-prime-e2e",
+  "version": "1.0.0",
+  "description": "End-to-end tests for Cyber Security Prime",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "install-browsers": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "e2e",
+    "testing",
+    "playwright",
+    "tauri",
+    "cyber-security"
+  ],
+  "author": "Cyber Security Prime Team",
+  "license": "MIT"
+}

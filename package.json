@@ -1,0 +1,50 @@
+{
+  "name": "cyber-security-prime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:icon": "tauri icon",
+    "clean": "rimraf build .svelte-kit node_modules/.vite",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.1",
+    "@sveltejs/kit": "^2.0.6",
+    "@sveltejs/vite-plugin-svelte": "^3.0.1",
+    "@tailwindcss/typography": "^0.5.10",
+    "@tauri-apps/cli": "^1.5.8",
+    "@types/node": "^20.10.6",
+    "autoprefixer": "^10.4.16",
+    "png-to-ico": "^3.0.1",
+    "postcss": "^8.4.32",
+    "prettier": "^3.1.1",
+    "prettier-plugin-svelte": "^3.1.2",
+    "prettier-plugin-tailwindcss": "^0.5.9",
+    "rimraf": "^5.0.5",
+    "sharp": "^0.34.5",
+    "svelte": "^4.2.8",
+    "svelte-check": "^3.6.2",
+    "tailwindcss": "^3.4.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.5.3",
+    "bits-ui": "^0.15.0",
+    "clsx": "^2.0.0",
+    "lucide-svelte": "^0.303.0",
+    "mode-watcher": "^0.2.0",
+    "tailwind-merge": "^2.2.0",
+    "tailwind-variants": "^0.1.19"
+  }
+}

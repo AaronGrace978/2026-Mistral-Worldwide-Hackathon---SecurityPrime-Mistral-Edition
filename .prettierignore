@@ -1,0 +1,15 @@
+# Package managers
+node_modules
+pnpm-lock.yaml
+package-lock.json
+
+# Build outputs
+build
+.svelte-kit
+dist
+target
+
+# Generated
+*.min.js
+*.min.css
+

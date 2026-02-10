@@ -1,0 +1,72 @@
+[package]
+name = "cyber-security-prime"
+version = "0.1.0"
+description = "A powerful, modular, all-in-one cybersecurity desktop application"
+authors = ["Cyber Security Prime Team"]
+license = "MIT"
+repository = "https://github.com/cyber-security-prime/cyber-security-prime"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+tauri = { version = "1.6", features = [ "fs-remove-file", "fs-create-dir", "fs-write-file", "fs-rename-file", "fs-read-file", "fs-exists", "fs-read-dir", "fs-remove-dir", "shell-open", "path-all", "dialog-all", "os-all", "process-relaunch", "system-tray", "window-all"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.35", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+thiserror = "1.0"
+once_cell = "1.21"
+parking_lot = "0.12"
+hostname = "0.3"
+num_cpus = "1.16"
+sysinfo = { version = "0.30", features = ["serde"] }
+nvml-wrapper = "0.9"
+sha2 = "0.10"
+
+# AI Agent (Ollama) dependencies
+reqwest = { version = "0.11", features = ["json", "stream"] }
+lazy_static = "1.4"
+futures-util = "0.3"
+log = "0.4"
+# Secure storage for API keys
+keyring = "2.1"
+# Random number generation
+rand = "0.8"
+# SQLite database for persistence
+rusqlite = { version = "0.31", features = ["bundled"] }
+# Base64 encoding for license keys
+base64 = "0.21"
+# HMAC for license validation
+hmac = "0.12"
+# Windows Service support
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.6"
+
+[dev-dependencies]
+tokio-test = "0.4"
+# Memory Forensics and Advanced Scanning - using mock implementations for now
+# yara = "0.23"  # Commented out - would need proper YARA integration
+# goblin = "0.8"  # Commented out - for PE analysis
+# process_memory = "0.6"  # Commented out - for memory reading
+# AI/ML for behavioral detection
+linfa = "0.7"
+linfa-clustering = "0.7"
+# VPN module
+# Note: libc is optional, only needed for Unix admin checks
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+

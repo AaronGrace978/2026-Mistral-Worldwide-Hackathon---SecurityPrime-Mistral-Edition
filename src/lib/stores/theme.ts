@@ -8,7 +8,9 @@ type Theme = 'dark' | 'light' | 'system';
 
 // Get initial theme from localStorage or default to dark
 function getInitialTheme(): Theme {
-	return 'dark';
+	if (!browser) return 'dark';
+	const stored = localStorage.getItem('theme') as Theme | null;
+	return stored || 'dark';
 }
 
 // Create the theme store
@@ -17,24 +19,27 @@ function createThemeStore() {
 
 	return {
 		subscribe,
-		set: (_theme: Theme) => {
+		set: (theme: Theme) => {
 			if (browser) {
-				localStorage.setItem('theme', 'dark');
-				applyTheme('dark');
+				localStorage.setItem('theme', theme);
+				applyTheme(theme);
 			}
-			set('dark');
+			set(theme);
 		},
 		toggle: () => {
-			// Always dark for cybersecurity app
-			if (browser) {
-				localStorage.setItem('theme', 'dark');
-				applyTheme('dark');
-			}
+			update((current) => {
+				const newTheme = current === 'dark' ? 'light' : 'dark';
+				if (browser) {
+					localStorage.setItem('theme', newTheme);
+					applyTheme(newTheme);
+				}
+				return newTheme;
+			});
 		},
 		init: () => {
 			if (browser) {
-				localStorage.setItem('theme', 'dark');
-				applyTheme('dark');
+				const theme = getInitialTheme();
+				applyTheme(theme);
 			}
 		}
 	};

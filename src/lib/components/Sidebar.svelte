@@ -5,13 +5,14 @@
 	import { cn } from '$lib/utils';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Separator } from '$lib/components/ui/separator';
-	import { Shield, ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import MistralLogo from '$lib/components/MistralLogo.svelte';
+	import MistralCat from '$lib/components/MistralCat.svelte';
 
 	export let collapsed = false;
 
 	$: currentPath = $page.url.pathname;
 
-	// Get navigation items (excluding settings)
 	$: navItems = allModules.filter((m) => m.id !== 'settings');
 	$: settingsModule = allModules.find((m) => m.id === 'settings');
 
@@ -32,19 +33,21 @@
 		collapsed ? 'w-16' : 'w-64'
 	)}
 >
-	<!-- Logo & Brand -->
-	<a href="/" class="flex items-center gap-3 p-4 border-b border-border/50 hover:bg-primary/5 transition-colors cursor-pointer">
-		<div class="relative flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-cyber-blue to-cyber-purple">
-			<Shield class="w-6 h-6 text-white" />
-			<div class="absolute inset-0 rounded-lg animate-pulse-glow opacity-50" />
+	<!-- Mistral Brand Header -->
+	<a href="/" class="flex items-center gap-3 p-4 border-b border-border/50 hover:bg-primary/5 transition-colors cursor-pointer group">
+		<div class="relative flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-[#E10500] via-[#FF8205] to-[#FFD800] overflow-hidden">
+			<MistralLogo size={28} className="drop-shadow-sm" />
+			<div class="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-40 transition-opacity"
+				style="box-shadow: 0 0 15px #FF8205, 0 0 30px rgba(255, 130, 5, 0.3);" />
 		</div>
 		{#if !collapsed}
 			<div class="flex flex-col">
-				<span class="font-cyber text-sm font-bold tracking-wider text-cyber-blue text-glow-blue">
-					CYBER SECURITY
+				<span class="font-bold text-sm tracking-wide text-mistral-gradient">
+					SECURITY PRIME
 				</span>
-				<span class="text-xs text-muted-foreground font-medium tracking-widest">
-					PRIME
+				<span class="text-[10px] text-muted-foreground font-medium tracking-widest flex items-center gap-1">
+					MISTRAL EDITION
+					<span class="inline-block w-1 h-1 rounded-full bg-[#FF8205] animate-pulse" />
 				</span>
 			</div>
 		{/if}
@@ -52,10 +55,9 @@
 
 	<!-- Navigation -->
 	<nav class="flex-1 overflow-y-auto p-2 space-y-1">
-		<!-- Main modules group -->
 		{#if !collapsed}
 			<div class="px-2 py-2">
-				<span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+				<span class="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em]">
 					Security Modules
 				</span>
 			</div>
@@ -64,13 +66,14 @@
 		{#each navItems as module (module.id)}
 			{@const status = getModuleStatus(module.id)}
 			{@const active = isActive(module.route)}
-			
+
 			<a
 				href={module.route}
 				class={cn(
 					'group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
 					'hover:bg-primary/10 hover:border-primary/30',
-					active && 'bg-primary/15 border border-primary/40 shadow-neon-blue',
+					active && 'bg-primary/15 border border-primary/40',
+					active && 'shadow-[0_0_15px_rgba(255,130,5,0.15)]',
 					!active && 'border border-transparent',
 					collapsed && 'justify-center'
 				)}
@@ -82,7 +85,7 @@
 				)}>
 					<svelte:component this={module.icon} class="w-5 h-5" />
 				</div>
-				
+
 				{#if !collapsed}
 					<div class="flex-1 min-w-0">
 						<div class="flex items-center gap-2">
@@ -98,7 +101,6 @@
 						</div>
 					</div>
 
-					<!-- Status indicator -->
 					{#if status && module.id !== 'dashboard'}
 						<div class={cn(
 							'w-2 h-2 rounded-full',
@@ -114,8 +116,22 @@
 		{/each}
 	</nav>
 
-	<!-- Settings & Collapse -->
+	<!-- Cat + Settings Footer -->
 	<div class="p-2 border-t border-border/50 space-y-1">
+		{#if !collapsed}
+			<!-- Le Chat mascot -->
+			<div class="flex items-center justify-center py-2 mb-1">
+				<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/10">
+					<MistralCat size={20} animated={true} />
+					<span class="text-[10px] text-muted-foreground font-medium">Powered by Le Chat</span>
+				</div>
+			</div>
+		{:else}
+			<div class="flex justify-center py-2">
+				<MistralCat size={20} animated={true} />
+			</div>
+		{/if}
+
 		{#if settingsModule}
 			{@const active = isActive(settingsModule.route)}
 			<a
@@ -128,12 +144,12 @@
 				)}
 				title={collapsed ? settingsModule.name : undefined}
 			>
-				<svelte:component 
-					this={settingsModule.icon} 
+				<svelte:component
+					this={settingsModule.icon}
 					class={cn(
 						'w-5 h-5 transition-colors',
 						active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
-					)} 
+					)}
 				/>
 				{#if !collapsed}
 					<span class={cn(
@@ -165,4 +181,3 @@
 		</button>
 	</div>
 </aside>
-

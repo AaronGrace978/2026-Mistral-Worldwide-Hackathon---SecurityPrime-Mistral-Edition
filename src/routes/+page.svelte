@@ -5,6 +5,8 @@
 	import StatusCard from '$lib/components/StatusCard.svelte';
 	import ActivityLog from '$lib/components/ActivityLog.svelte';
 	import ThreatAlert from '$lib/components/ThreatAlert.svelte';
+	import MistralLogo from '$lib/components/MistralLogo.svelte';
+	import MistralCat from '$lib/components/MistralCat.svelte';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -23,7 +25,12 @@
 		ArrowRight,
 		Brain,
 		Eye,
-		Rocket
+		Rocket,
+		Trophy,
+		Calendar,
+		Users,
+		Globe,
+		Code
 	} from 'lucide-svelte';
 	import * as api from '$lib/api';
 
@@ -69,18 +76,53 @@
 </script>
 
 <svelte:head>
-	<title>Dashboard - Cyber Security Prime</title>
+	<title>Dashboard - Cyber Security Prime | Mistral Edition</title>
 </svelte:head>
 
 <div class="space-y-6">
-	<!-- Hero Header -->
+	<!-- Hackathon Banner -->
+	<div class="hackathon-banner rounded-xl p-5">
+		<div class="flex items-center gap-5 relative z-10">
+			<div class="flex-shrink-0">
+				<div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E10500] via-[#FF8205] to-[#FFD800] flex items-center justify-center shadow-lg shadow-orange-500/20">
+					<MistralLogo size={42} />
+				</div>
+			</div>
+			<div class="flex-1 min-w-0">
+				<div class="flex items-center gap-2 mb-1">
+					<h2 class="text-lg font-bold text-mistral-gradient">Mistral AI Worldwide Hackathon 2026</h2>
+					<Badge class="bg-[#E10500] text-white border-none text-[10px] font-bold tracking-wider animate-pulse">LIVE NOW</Badge>
+				</div>
+				<p class="text-sm text-muted-foreground">
+					Feb 28 - Mar 1, 2026 &bull; 48 hours &bull; $200K+ in prizes &bull;
+					7 cities + online &bull; 1000+ hackers worldwide
+				</p>
+				<div class="flex items-center gap-4 mt-2.5 text-xs">
+					<div class="flex items-center gap-1.5 text-[#FFD800]">
+						<Trophy class="w-3.5 h-3.5" />
+						<span>$10K + $15K credits (Global Winner)</span>
+					</div>
+					<div class="flex items-center gap-1.5 text-[#FFB000]">
+						<Users class="w-3.5 h-3.5" />
+						<span>Teams of 1-4</span>
+					</div>
+					<div class="flex items-center gap-1.5 text-[#FF8205]">
+						<Globe class="w-3.5 h-3.5" />
+						<span>Paris, London, NYC, SF, Tokyo, Singapore, Sydney</span>
+					</div>
+				</div>
+			</div>
+			<div class="flex-shrink-0 hidden lg:block">
+				<MistralCat size={56} animated={true} />
+			</div>
+		</div>
+	</div>
+
+	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
 				Security Dashboard
-				<Badge variant="outline" class="text-[10px] font-mono tracking-wider border-orange-500/40 text-orange-400">
-					MISTRAL-POWERED
-				</Badge>
 			</h1>
 			<p class="text-muted-foreground mt-1">
 				Real-time system protection with AI-driven threat analysis
@@ -177,38 +219,37 @@
 			</div>
 		</div>
 
-		<!-- AI Insight Card -->
+		<!-- Mistral AI Copilot Card -->
 		<div class="col-span-12">
-			<Card variant="glass" class="border-orange-500/20 overflow-hidden relative">
-				<div class="absolute inset-0 opacity-[0.03] pointer-events-none"
-					style="background: radial-gradient(circle at 20% 50%, #ff7300 0%, transparent 50%), radial-gradient(circle at 80% 50%, #ff9900 0%, transparent 50%);"
+			<Card variant="glass" class="border-primary/20 overflow-hidden relative group">
+				<div class="absolute inset-0 opacity-[0.04] pointer-events-none"
+					style="background: linear-gradient(135deg, #E10500 0%, #FA5010 25%, #FF8205 50%, #FFB000 75%, #FFD800 100%);"
 				/>
 				<CardContent class="py-5">
 					<div class="flex items-center gap-6">
-						<div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex-shrink-0">
-							<Brain class="w-7 h-7 text-white" />
+						<div class="relative flex-shrink-0">
+							<div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E10500] via-[#FF8205] to-[#FFD800]">
+								<MistralCat size={42} className="drop-shadow-md" />
+							</div>
 						</div>
 						<div class="flex-1 min-w-0">
 							<div class="flex items-center gap-2 mb-1">
-								<h3 class="text-base font-semibold">Mistral Security Copilot</h3>
-								<Badge variant="outline" class="text-[9px] border-orange-500/30 text-orange-400 font-mono">AI</Badge>
+								<h3 class="text-base font-bold">Mistral Security Copilot</h3>
+								<Badge variant="outline" class="text-[9px] border-[#FF8205]/40 text-[#FF8205] font-mono tracking-wider">LE CHAT</Badge>
 							</div>
 							<p class="text-sm text-muted-foreground">
-								Multi-model AI analysis using Mistral Large for deep threat assessment, Ministral for fast triage,
-								Devstral for remediation scripting, and Pixtral for visual inspection.
+								Multi-model AI analysis — Mistral Large for deep reasoning, Ministral for fast triage,
+								Devstral for code remediation, Pixtral for visual inspection.
 							</p>
 						</div>
 						<div class="flex items-center gap-3 flex-shrink-0">
-							<div class="text-right mr-2">
-								<div class="flex items-center gap-2 text-xs text-muted-foreground">
-									<div class="flex -space-x-1">
-										<div class="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center"><Brain class="w-2.5 h-2.5 text-orange-400" /></div>
-										<div class="w-5 h-5 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center"><Zap class="w-2.5 h-2.5 text-yellow-400" /></div>
-										<div class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center"><Sparkles class="w-2.5 h-2.5 text-emerald-400" /></div>
-										<div class="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center"><Eye class="w-2.5 h-2.5 text-violet-400" /></div>
-									</div>
-									<span>4 models available</span>
+							<div class="text-right mr-2 hidden md:block">
+								<div class="flex items-center gap-1.5">
+									{#each ['#E10500', '#FA5010', '#FF8205', '#FFB000', '#FFD800'] as color}
+										<div class="w-3 h-3 rounded-sm" style="background: {color};" />
+									{/each}
 								</div>
+								<span class="text-[10px] text-muted-foreground mt-1 block">4 models routed</span>
 							</div>
 							<Button variant="cyber" class="gap-2" href="/agent">
 								<Bot class="w-4 h-4" />

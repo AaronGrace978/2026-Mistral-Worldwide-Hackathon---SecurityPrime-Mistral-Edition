@@ -35,6 +35,8 @@
 		FolderSearch,
 		Terminal
 	} from 'lucide-svelte';
+	import MistralCat from '$lib/components/MistralCat.svelte';
+	import MistralLogo from '$lib/components/MistralLogo.svelte';
 
 	interface ModelInfo {
 		name: string;
@@ -289,17 +291,17 @@
 	<!-- Hero Header -->
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
-			<div class="mistral-icon-shell flex items-center justify-center w-14 h-14 rounded-2xl relative">
-				<Bot class="w-7 h-7 text-white" />
+			<div class="mistral-icon-shell flex items-center justify-center w-14 h-14 rounded-2xl relative overflow-hidden">
+				<MistralCat size={36} className="drop-shadow-md" />
 				{#if status?.connected}
 					<div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
 				{/if}
 			</div>
 			<div>
 				<h1 class="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-					Mistral Security Copilot
-					<Badge variant="outline" class="text-[10px] font-mono tracking-wider border-orange-500/40 text-orange-400">
-						POWERED BY MISTRAL AI
+					<span class="text-mistral-gradient">Le Chat</span> Security Copilot
+					<Badge variant="outline" class="text-[10px] font-mono tracking-wider border-[#FF8205]/40 text-[#FF8205]">
+						MISTRAL AI
 					</Badge>
 				</h1>
 				<p class="text-muted-foreground text-sm mt-0.5">
@@ -416,12 +418,21 @@
 						<div class="flex items-center gap-2">
 							<div class="relative flex-1">
 								<Key class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-								<input
-									type={showApiKey ? 'text' : 'password'}
-									bind:value={apiKey}
-									class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
-									placeholder="Enter your Ollama Cloud / Mistral API key"
-								/>
+								{#if showApiKey}
+									<input
+										type="text"
+										bind:value={apiKey}
+										class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
+										placeholder="Enter your Ollama Cloud / Mistral API key"
+									/>
+								{:else}
+									<input
+										type="password"
+										bind:value={apiKey}
+										class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
+										placeholder="Enter your Ollama Cloud / Mistral API key"
+									/>
+								{/if}
 								<button
 									type="button"
 									class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -498,8 +509,9 @@
 			{#if messages.length === 0}
 				<!-- Empty State -->
 				<div class="h-full flex flex-col items-center justify-center text-center">
-					<div class="mistral-icon-shell w-20 h-20 rounded-3xl flex items-center justify-center mb-6 opacity-80">
-						<Bot class="w-10 h-10 text-white" />
+					<div class="mb-6 relative">
+						<MistralCat size={80} animated={true} />
+						<div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-16 h-2 bg-primary/10 rounded-full blur-sm" />
 					</div>
 					<p class="text-xl font-semibold text-foreground mb-1">What can I help you secure?</p>
 					<p class="text-sm text-muted-foreground max-w-md">
@@ -554,7 +566,7 @@
 							{#if message.role === 'user'}
 								<span class="text-xs font-bold text-white">U</span>
 							{:else}
-								<Bot class="w-4 h-4 text-white" />
+								<MistralCat size={20} />
 							{/if}
 						</div>
 
@@ -643,19 +655,19 @@
 
 <style>
 	.mistral-icon-shell {
-		background: linear-gradient(135deg, rgba(255, 115, 0, 0.9), rgba(255, 153, 0, 0.8));
-		box-shadow: 0 0 24px rgba(255, 120, 0, 0.35), 0 0 48px rgba(255, 120, 0, 0.15);
+		background: linear-gradient(135deg, #E10500, #FA5010, #FF8205, #FFB000, #FFD800);
+		box-shadow: 0 0 24px rgba(255, 130, 5, 0.3), 0 0 48px rgba(255, 130, 5, 0.1);
 	}
 
 	.mistral-avatar {
-		background: linear-gradient(135deg, #ff7300, #ff9900);
+		background: linear-gradient(135deg, #FA5010, #FF8205, #FFB000);
 	}
 
 	:global(.mistral-panel) {
-		border-color: rgba(255, 138, 18, 0.35);
+		border-color: rgba(255, 130, 5, 0.3);
 		background:
-			radial-gradient(circle at top right, rgba(255, 138, 18, 0.12), transparent 40%),
-			radial-gradient(circle at bottom left, rgba(255, 94, 0, 0.1), transparent 45%);
+			radial-gradient(circle at top right, rgba(250, 80, 16, 0.1), transparent 40%),
+			radial-gradient(circle at bottom left, rgba(255, 130, 5, 0.08), transparent 45%);
 	}
 
 	.quick-action-card {

@@ -47,25 +47,36 @@ export default {
 					DEFAULT: 'hsl(var(--card) / <alpha-value>)',
 					foreground: 'hsl(var(--card-foreground) / <alpha-value>)'
 				},
-				// Mistral-inspired colors
+				// Mistral brand colors (2025 rebrand)
+				mistral: {
+					red: '#E10500',
+					'orange-dark': '#FA5010',
+					orange: '#FF8205',
+					'orange-light': '#FFB000',
+					yellow: '#FFD800',
+					beige: '#FFFAEB',
+					'beige-mid': '#FFF0C3',
+					'beige-dark': '#E9E2CB',
+					black: '#0A0A0F'
+				},
 				cyber: {
-					blue: '#ff7a18',
-					'blue-dark': '#d95f00',
-					purple: '#ff9f43',
+					blue: '#FF8205',
+					'blue-dark': '#FA5010',
+					purple: '#FFB000',
 					'purple-dark': '#d97706',
-					pink: '#ff6b35',
-					yellow: '#ffb347',
+					pink: '#FA5010',
+					yellow: '#FFD800',
 					green: '#22c55e',
-					red: '#ff0044',
-					orange: '#ff8a12'
+					red: '#E10500',
+					orange: '#FF8205'
 				},
 				neon: {
-					blue: '#ff8a12',
-					purple: '#ff9f43',
-					pink: '#ff6b35',
+					blue: '#FF8205',
+					purple: '#FFB000',
+					pink: '#FA5010',
 					green: '#22c55e',
-					yellow: '#f59e0b',
-					red: '#ef4444'
+					yellow: '#FFD800',
+					red: '#E10500'
 				}
 			},
 			borderRadius: {
@@ -74,7 +85,7 @@ export default {
 				sm: 'calc(var(--radius) - 4px)'
 			},
 			fontFamily: {
-				sans: ['Rajdhani', 'Inter', 'system-ui', 'sans-serif'],
+				sans: ['Space Grotesk', 'Rajdhani', 'Inter', 'system-ui', 'sans-serif'],
 				mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
 				cyber: ['Orbitron', 'sans-serif']
 			},

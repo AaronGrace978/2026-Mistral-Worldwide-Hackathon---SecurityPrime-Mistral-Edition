@@ -511,7 +511,7 @@ async fn emit_security_event(app: &tauri::AppHandle, event: SecurityEvent) -> Re
 
     let record = crate::database::models::ActivityRecord {
         id: event.id.clone(),
-        event_type: event.event_type.clone(),
+        event_type: format!("{:?}", event.event_type),
         title: event.title.clone(),
         description: event.description.clone(),
         severity: event.severity.clone(),

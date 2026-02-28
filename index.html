@@ -380,6 +380,7 @@
       letter-spacing: 0.5px; padding: 0.2rem 0.55rem; border-radius: 6px; margin-bottom: 0.6rem;
     }
     .badge-building { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+    .badge-shipped { background: rgba(34, 197, 94, 0.15); color: var(--success); }
     .badge-planned { background: rgba(139, 148, 158, 0.15); color: var(--muted); }
 
     /* ==================== CTA BOTTOM ==================== */
@@ -459,7 +460,7 @@
         <div class="hero-badge"><span class="pulse"></span> Mistral Hackathon 2026</div>
         <h1>AI-Native Endpoint Security.<br><span class="gradient">Trust Through Observability.</span></h1>
         <p class="subtitle">
-          SecurityPrime uses Mistral models as the core reasoning layer. Multi-model routing via Ollama (cloud + local).
+          SecurityPrime uses Mistral models as the core reasoning layer. Direct api.mistral.ai + Ollama (cloud + local).
           Built with Rust, Tauri &amp; SvelteKit. <strong style="color:var(--text)">Open source. Auditable.</strong>
         </p>
         <div class="hero-buttons">
@@ -670,6 +671,13 @@
               <p>Build scripts (<code>build.bat</code>, <code>setup.bat</code>, <code>dev.bat</code>), a Quick Start guide, a full User Guide with keyboard shortcuts, an API Reference for the MSP server, and an MSP Deployment Guide. This is release-grade.</p>
             </div>
           </div>
+          <div class="proof-card reveal reveal-delay-4">
+            <div class="proof-check">&#10003;</div>
+            <div>
+              <h4>EDR-Class Features (Real Implementations)</h4>
+              <p>Autonomous Response Playbooks (taskkill, netsh firewall, file quarantine, registry edits), Behavior Detection (process chains, persistence, lateral movement), EDR Threat Timeline (Windows Event Log, process/network correlation), Zero-Trust App Control (SHA256 + Authenticode + parent process), and Audit-Ready Reports (HTML/JSON SOC reports from live system data). No mocks.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -692,7 +700,7 @@
           </div>
           <div class="roadmap-grid">
             <div class="roadmap-card reveal">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Autonomous Response Playbooks</h4>
               <p>One-click or auto actions when threat score crosses a threshold &mdash; isolate process, block IP, quarantine file, disable startup item. Configurable runbooks, not just alerts.</p>
             </div>
@@ -702,17 +710,17 @@
               <p>Combines vuln scan + firewall + running services + exposed ports into a single "exposure map" with a live risk score. One view, total visibility.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-2">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Behavior-Based Detection</h4>
               <p>Beyond signatures. Detect suspicious behavior chains &mdash; e.g., PowerShell spawns + persistence write + outbound beacon &mdash; and flag the full chain, not just the payload.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-3">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Threat Timeline (EDR-lite)</h4>
               <p>Per-device event timeline showing "what happened first" for investigations. Correlate process, file, network, and registry events into a clear incident story.</p>
             </div>
             <div class="roadmap-card reveal">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Zero-Trust App Control</h4>
               <p>Allowlist / denylist by executable hash + signer reputation + parent process. Only trusted code runs. Everything else gets stopped and logged.</p>
             </div>
@@ -891,35 +899,35 @@
               </tr>
               <tr>
                 <td>Autonomous Response</td>
-                <td class="t-sp">Auto playbooks (building)</td>
+                <td class="t-sp">Auto playbooks ✓</td>
                 <td class="t-partial">Premium only</td>
                 <td class="t-partial">Premium only</td>
                 <td class="t-no">Manual only</td>
               </tr>
               <tr>
                 <td>Behavior Detection</td>
-                <td class="t-sp">Chain analysis (building)</td>
+                <td class="t-sp">Chain analysis ✓</td>
                 <td class="t-yes">Signature + heuristic</td>
                 <td class="t-yes">SONAR</td>
                 <td class="t-partial">Basic heuristics</td>
               </tr>
               <tr>
                 <td>EDR / Threat Timeline</td>
-                <td class="t-sp">EDR-lite timeline (building)</td>
+                <td class="t-sp">EDR-lite timeline ✓</td>
                 <td class="t-no">Separate product</td>
                 <td class="t-no">Separate product</td>
                 <td class="t-partial">MDE separate</td>
               </tr>
               <tr>
                 <td>Zero-Trust App Control</td>
-                <td class="t-sp">Hash + signer + parent (building)</td>
+                <td class="t-sp">Hash + signer + parent ✓</td>
                 <td class="t-no">Enterprise only</td>
                 <td class="t-no">Enterprise only</td>
                 <td class="t-partial">AppLocker separate</td>
               </tr>
               <tr>
                 <td>Audit-Ready Reports</td>
-                <td class="t-sp">PDF/JSON SOC reports (building)</td>
+                <td class="t-sp">PDF/JSON SOC reports ✓</td>
                 <td class="t-partial">Basic reports</td>
                 <td class="t-partial">Basic reports</td>
                 <td class="t-no">Event Viewer only</td>

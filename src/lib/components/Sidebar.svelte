@@ -120,7 +120,7 @@
 		{#if !collapsed}
 			<div class="flex items-center justify-center py-2 mb-1">
 				<span class="text-[10px] text-muted-foreground">
-					Powered by <span class="font-semibold text-foreground">Le Security</span>
+					Powered by <a href="https://mistral.ai" target="_blank" rel="noopener" class="font-semibold text-foreground hover:text-orange-400 transition-colors">Mistral.ai</a>
 				</span>
 			</div>
 		{/if}

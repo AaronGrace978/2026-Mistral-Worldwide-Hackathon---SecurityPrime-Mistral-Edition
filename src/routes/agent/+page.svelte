@@ -585,7 +585,7 @@
 								? 'bg-blue-600/20 border border-blue-500/20'
 								: 'bg-muted/40 border border-border/50'}">
 								{#if message.role === 'assistant'}
-									<div class="prose prose-sm prose-invert max-w-none message-content">
+									<div class="prose prose-sm prose-invert max-w-none message-content text-foreground">
 										{#if message.streaming && message.content === ''}
 											<div class="flex items-center gap-2 text-sm text-muted-foreground">
 												<Loader2 class="w-4 h-4 animate-spin text-orange-400" />
@@ -599,7 +599,7 @@
 										{/if}
 									</div>
 								{:else}
-									<p class="text-sm whitespace-pre-wrap">{message.content}</p>
+									<p class="text-sm whitespace-pre-wrap text-foreground">{message.content}</p>
 								{/if}
 							</div>
 						</div>
@@ -617,7 +617,7 @@
 					placeholder={status?.connected ? 'Describe a threat, ask for analysis, or request a scan...' : 'Connect to a Mistral endpoint to start'}
 					disabled={!status?.connected || loading}
 					rows="1"
-					class="flex-1 px-4 py-3 bg-muted/30 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/30 disabled:opacity-50 transition-all text-sm min-h-[44px] max-h-[120px]"
+					class="flex-1 px-4 py-3 bg-muted/30 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/30 disabled:opacity-50 transition-all text-sm min-h-[44px] max-h-[120px] text-foreground placeholder:text-muted-foreground"
 				/>
 				<Button
 					variant="cyber"

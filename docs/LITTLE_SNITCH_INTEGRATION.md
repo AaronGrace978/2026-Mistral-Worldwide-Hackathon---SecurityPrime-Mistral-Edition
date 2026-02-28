@@ -1,6 +1,6 @@
-# Little Snitch Integration Plan (Hackathon)
+# Little Snitch Integration
 
-SecurityPrime can integrate with Little Snitch as a network-transparency companion for macOS users.
+SecurityPrime integrates with [Little Snitch](https://obdev.at/products/littlesnitch/index.html) as a network-transparency companion for macOS users.
 
 ## Why This Helps
 
@@ -8,36 +8,60 @@ SecurityPrime can integrate with Little Snitch as a network-transparency compani
 - Lets judges validate that SecurityPrime does not phone home unexpectedly.
 - Supports a "trust through observability" story in demos.
 
-## Integration Scope
+## Implementation Status
 
-- **Phase 1 (immediate):**
-  - Add a macOS-only UI card: "Little Snitch Ready".
-  - Detect if Little Snitch is installed and show setup instructions.
-  - Show recommended allow/deny domains based on active SecurityPrime features.
-- **Phase 2 (post-hackathon):**
-  - Export a suggested rule profile for manual import.
-  - Add a one-click "Open in Little Snitch" deep-link workflow where supported.
-  - Correlate SecurityPrime network alerts with Little Snitch block events.
+### Phase 1 — Complete
 
-## Suggested UX
+- macOS-only UI card: **Little Snitch Companion** in the Network Monitor page.
+- Auto-detect Little Snitch at `/Applications/Little Snitch.app` and Setapp path.
+- Link to Little Snitch docs.
 
-- New section under network monitoring:
-  - `Little Snitch Status: Installed / Not Installed`
-  - `Recommended Rules`
-  - `Open Little Snitch`
-- Suggested default policy:
-  - Allow only required model endpoint domains.
-  - Deny unknown telemetry domains by default.
-  - Warn when new destination domains appear.
+### Phase 2 — Complete
+
+- **Recommended Rules Engine** (`get_little_snitch_rules`):
+  - Curated allow rules for AI model endpoints (OpenAI, Anthropic, Gemini, Mistral, Groq, Cohere).
+  - Allow rules for local model servers (Ollama, LM Studio).
+  - Allow rules for OS update domains.
+  - Deny rules for known telemetry domains (Microsoft, Apple, Google).
+  - Dynamic rules generated from live connections for unknown destinations.
+  - Filterable rules table in the UI with action/allow/deny views.
+
+- **Domain Trust Classification** (`get_little_snitch_domain_trust`):
+  - Every unique destination IP/domain from active connections is classified as **trusted**, **unknown**, or **suspicious** using a built-in domain registry.
+  - Trust summary badges with counts.
+  - Filterable domain list with category labels.
+
+- **`.lsrules` Profile Export** (`export_little_snitch_profile`):
+  - Generates a valid Little Snitch Rule Group JSON file.
+  - Copy to clipboard or download as `SecurityPrime.lsrules`.
+  - Import into Little Snitch via **File → New Rule Group From File**.
+
+## Backend Commands
+
+| Command | Description |
+|---|---|
+| `get_little_snitch_status` | Detect Little Snitch installation (macOS only) |
+| `get_little_snitch_rules` | Generate recommended allow/deny rules |
+| `get_little_snitch_domain_trust` | Classify active connection domains by trust level |
+| `export_little_snitch_profile` | Export `.lsrules` JSON for Little Snitch import |
+
+## Known Domain Registry
+
+The backend maintains a curated list of known domains in `cmd.rs` (`KNOWN_DOMAINS`):
+
+- **AI endpoints**: api.openai.com, api.anthropic.com, generativelanguage.googleapis.com, api.mistral.ai, api.groq.com, api.cohere.ai
+- **Local**: localhost, 127.0.0.1
+- **OS updates**: update.microsoft.com, download.windowsupdate.com, swscan.apple.com, swdist.apple.com
+- **CDNs**: cdn.jsdelivr.net, cdnjs.cloudflare.com
+- **Telemetry (deny)**: telemetry.microsoft.com, vortex.data.microsoft.com, settings-win.data.microsoft.com, watson.telemetry.microsoft.com, metrics.apple.com, xp.apple.com, analytics.google.com, firebaselogging.googleapis.com
 
 ## Platform Notes
 
 - Little Snitch is macOS-specific.
-- SecurityPrime should keep this feature optional and clearly labeled as "macOS only".
+- The feature is optional and labeled as macOS-only.
 - Windows users continue using built-in firewall and network monitor flows.
+- The recommended rules and domain trust features work on all platforms even without Little Snitch installed, providing value as a network policy reference.
 
 ## Submission Language
-
-Use this wording in your demo notes:
 
 > "SecurityPrime pairs with Little Snitch on macOS for process-level outbound visibility and consent-driven network control. Users can independently verify every network destination our AI features use."

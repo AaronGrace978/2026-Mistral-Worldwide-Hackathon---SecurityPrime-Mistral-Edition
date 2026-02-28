@@ -3,33 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SecurityPrime — Next-Gen Cybersecurity</title>
-  <meta name="description" content="SecurityPrime: A powerful, modular cybersecurity desktop app built with Rust, Tauri & Svelte. Not from a big vendor — but it works. Proof inside." />
+  <title>SecurityPrime — Mistral AI Hackathon 2026</title>
+  <meta name="description" content="SecurityPrime: AI-Native Endpoint Security. Trust Through Observability. Mistral AI Worldwide Hackathon 2026 submission. Built with Rust, Tauri & Svelte." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    /* Mistral AI brand palette: red → orange → yellow rainbow */
     :root {
-      --bg: #04060b;
-      --surface: rgba(13, 17, 23, 0.7);
-      --surface-solid: #0d1117;
-      --border: rgba(0, 217, 255, 0.1);
-      --border-bright: rgba(0, 217, 255, 0.3);
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #00d9ff;
-      --accent2: #a855f7;
-      --accent3: #22d3ee;
-      --success: #10b981;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --glow: 0 0 20px rgba(0, 217, 255, 0.3), 0 0 60px rgba(0, 217, 255, 0.1);
-      --glow-purple: 0 0 20px rgba(168, 85, 247, 0.3), 0 0 60px rgba(168, 85, 247, 0.1);
+      --mistral-red: #e10500;
+      --mistral-orange-dark: #fa500f;
+      --mistral-orange: #ff8205;
+      --mistral-orange-light: #ffaf00;
+      --mistral-yellow: #ffd800;
+      --mistral-beige-light: #fff0eb;
+      --mistral-beige: #fff0c3;
+      --mistral-beige-dark: #e9e2cb;
+      --mistral-black: #000000;
+      --mistral-black-tinted: #1e1e1e;
+      --bg: #0a0a0a;
+      --surface: rgba(30, 30, 30, 0.9);
+      --surface-solid: #1e1e1e;
+      --border: rgba(255, 130, 5, 0.2);
+      --border-bright: rgba(255, 130, 5, 0.5);
+      --text: #fff0eb;
+      --muted: #b8b0a0;
+      --accent: #ff8205;
+      --accent2: #ffaf00;
+      --accent3: #ffd800;
+      --success: #22c55e;
+      --warn: #ffaf00;
+      --danger: #e10500;
+      --mistral-gradient: linear-gradient(135deg, #e10500, #fa500f, #ff8205, #ffaf00, #ffd800);
+      --glow: 0 0 30px rgba(255, 130, 5, 0.25), 0 0 60px rgba(250, 80, 15, 0.15);
+      --glow-purple: 0 0 20px rgba(255, 175, 0, 0.3), 0 0 60px rgba(255, 130, 5, 0.15);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.65;
@@ -55,9 +67,9 @@
       pointer-events: none;
       z-index: 0;
     }
-    .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -100px; animation: orbFloat1 20s ease-in-out infinite; }
-    .orb-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -100px; animation: orbFloat2 25s ease-in-out infinite; }
-    .orb-3 { width: 400px; height: 400px; background: #06b6d4; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: orbFloat3 18s ease-in-out infinite; }
+    .orb-1 { width: 600px; height: 600px; background: var(--mistral-orange); top: -200px; left: -100px; animation: orbFloat1 20s ease-in-out infinite; }
+    .orb-2 { width: 500px; height: 500px; background: var(--mistral-red); bottom: -150px; right: -100px; animation: orbFloat2 25s ease-in-out infinite; }
+    .orb-3 { width: 400px; height: 400px; background: var(--mistral-yellow); top: 50%; left: 50%; transform: translate(-50%, -50%); animation: orbFloat3 18s ease-in-out infinite; }
     @keyframes orbFloat1 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(80px, 60px); } }
     @keyframes orbFloat2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-60px, -80px); } }
     @keyframes orbFloat3 { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-40%, -60%) scale(1.2); } }
@@ -72,7 +84,7 @@
       z-index: 100;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      background: rgba(4, 6, 11, 0.8);
+      background: rgba(10, 10, 10, 0.9);
       border-bottom: 1px solid var(--border);
       transition: box-shadow 0.3s;
     }
@@ -84,7 +96,7 @@
     }
     .nav-logo {
       font-size: 1.2rem; font-weight: 800; letter-spacing: -0.5px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: var(--mistral-gradient);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
     }
@@ -93,7 +105,7 @@
       color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500;
       transition: color 0.2s;
     }
-    .nav-links a:hover { color: var(--accent); }
+    .nav-links a:hover { color: var(--mistral-orange); }
 
     /* ==================== HERO ==================== */
     .hero {
@@ -104,12 +116,19 @@
       position: relative;
     }
     .hero-content { max-width: 800px; }
+    .hero-mistral-gif {
+      display: block;
+      width: 120px; height: auto;
+      margin: 0 auto 1.5rem;
+      border-radius: 16px;
+      animation: fadeInUp 0.8s ease-out;
+    }
     .hero-badge {
       display: inline-flex; align-items: center; gap: 0.5rem;
-      background: rgba(0, 217, 255, 0.08);
-      border: 1px solid rgba(0, 217, 255, 0.2);
+      background: rgba(255, 130, 5, 0.15);
+      border: 1px solid rgba(255, 130, 5, 0.5);
       padding: 0.5rem 1.2rem; border-radius: 999px;
-      font-size: 0.85rem; font-weight: 600; color: var(--accent);
+      font-size: 0.85rem; font-weight: 600; color: var(--mistral-orange);
       margin-bottom: 2rem;
       animation: fadeInUp 0.8s ease-out;
     }
@@ -127,7 +146,7 @@
       animation: fadeInUp 0.8s ease-out 0.1s both;
     }
     .hero h1 .gradient {
-      background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+      background: var(--mistral-gradient);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
       background-size: 200% 200%;
@@ -151,10 +170,10 @@
       transition: all 0.25s ease;
     }
     .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #0099cc);
+      background: var(--mistral-gradient);
       color: #000; box-shadow: var(--glow);
     }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0, 217, 255, 0.5), 0 0 80px rgba(0, 217, 255, 0.2); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255, 130, 5, 0.5), 0 0 80px rgba(250, 80, 15, 0.25); }
     .btn-secondary {
       background: rgba(255,255,255,0.05);
       color: var(--text);
@@ -183,7 +202,7 @@
     .stat-card:hover { border-color: var(--border-bright); transform: translateY(-4px); box-shadow: var(--glow); }
     .stat-number {
       font-size: 2.5rem; font-weight: 900;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: var(--mistral-gradient);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
       font-family: 'JetBrains Mono', monospace;
     }
@@ -195,7 +214,10 @@
     .section-tag {
       display: inline-block;
       font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
-      color: var(--accent); margin-bottom: 0.75rem;
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.75rem;
     }
     .section-title {
       font-size: clamp(1.8rem, 3.5vw, 2.5rem);
@@ -220,7 +242,7 @@
     .feature-card::before {
       content: '';
       position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      background: var(--mistral-gradient);
       opacity: 0; transition: opacity 0.3s;
     }
     .feature-card:hover { border-color: var(--border-bright); transform: translateY(-4px); }
@@ -229,10 +251,10 @@
       width: 48px; height: 48px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
       font-size: 1.5rem; margin-bottom: 1rem;
-      background: rgba(0, 217, 255, 0.1); color: var(--accent);
+      background: rgba(255, 130, 5, 0.15); color: var(--mistral-orange);
     }
     .feature-card:nth-child(even) .feature-icon {
-      background: rgba(168, 85, 247, 0.1); color: var(--accent2);
+      background: rgba(255, 175, 0, 0.15); color: var(--mistral-orange-light);
     }
     .feature-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
     .feature-card p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
@@ -254,8 +276,14 @@
     .release-item p { color: var(--muted); font-size: 0.82rem; }
 
     /* ==================== PROOF / IT WORKS ==================== */
+    .mistral-section { position: relative; }
+    .mistral-rainbow-bar {
+      height: 4px; width: 100%;
+      background: var(--mistral-gradient);
+      margin-bottom: 2rem; border-radius: 0 0 4px 4px;
+    }
     .proof-section {
-      background: linear-gradient(135deg, rgba(0, 217, 255, 0.03), rgba(168, 85, 247, 0.03));
+      background: linear-gradient(135deg, rgba(225, 5, 0, 0.04), rgba(255, 130, 5, 0.04), rgba(255, 216, 0, 0.03));
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
     }
@@ -276,7 +304,7 @@
     .proof-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; }
     .proof-card p { color: var(--muted); font-size: 0.85rem; }
     .proof-card code {
-      background: rgba(0, 217, 255, 0.1); color: var(--accent);
+      background: rgba(255, 130, 5, 0.15); color: var(--mistral-orange);
       padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem;
       font-family: 'JetBrains Mono', monospace;
     }
@@ -295,16 +323,16 @@
     th {
       font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
       letter-spacing: 0.5px; color: var(--muted);
-      background: rgba(0, 217, 255, 0.04);
+      background: rgba(255, 130, 5, 0.08);
     }
-    th:nth-child(2) { color: var(--accent); }
+    th:nth-child(2) { color: var(--mistral-orange); }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(0, 217, 255, 0.02); }
+    tr:hover td { background: rgba(255, 130, 5, 0.04); }
     td:first-child { font-weight: 600; color: var(--text); }
     .t-yes { color: var(--success); font-weight: 600; }
     .t-partial { color: var(--warn); }
     .t-no { color: var(--muted); }
-    .t-sp { color: var(--accent); font-weight: 600; }
+    .t-sp { color: var(--mistral-orange); font-weight: 600; }
 
     /* ==================== ROADMAP / COMING NEXT ==================== */
     .roadmap-category { margin-bottom: 3rem; }
@@ -319,8 +347,8 @@
       font-size: 1.2rem;
     }
     .roadmap-cat-icon.impact { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-    .roadmap-cat-icon.trust { background: rgba(168, 85, 247, 0.15); color: var(--accent2); }
-    .roadmap-cat-icon.polish { background: rgba(0, 217, 255, 0.15); color: var(--accent); }
+    .roadmap-cat-icon.trust { background: rgba(255, 175, 0, 0.15); color: var(--mistral-orange-light); }
+    .roadmap-cat-icon.polish { background: rgba(255, 130, 5, 0.15); color: var(--mistral-orange); }
     .roadmap-cat-header h3 { font-size: 1.15rem; font-weight: 700; }
     .roadmap-cat-header .cat-count {
       font-size: 0.75rem; font-weight: 700; color: var(--muted);
@@ -342,8 +370,8 @@
       border-radius: 3px 0 0 3px; transition: opacity 0.3s;
     }
     .roadmap-category:nth-child(1) .roadmap-card::after { background: var(--danger); }
-    .roadmap-category:nth-child(2) .roadmap-card::after { background: var(--accent2); }
-    .roadmap-category:nth-child(3) .roadmap-card::after { background: var(--accent); }
+    .roadmap-category:nth-child(2) .roadmap-card::after { background: var(--mistral-orange-light); }
+    .roadmap-category:nth-child(3) .roadmap-card::after { background: var(--mistral-orange); }
     .roadmap-card:hover { border-color: var(--border-bright); transform: translateY(-3px); }
     .roadmap-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
     .roadmap-card p { color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
@@ -370,13 +398,13 @@
       padding: 2rem; text-align: center;
     }
     footer p { color: var(--muted); font-size: 0.85rem; }
-    footer a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
-    footer a:hover { color: var(--text); }
+    footer a { color: var(--mistral-orange); text-decoration: none; transition: color 0.2s; }
+    footer a:hover { color: var(--mistral-orange-light); }
     .footer-tag {
-      color: var(--accent2);
+      color: var(--mistral-orange-light);
       font-weight: 600;
     }
-    .footer-tag:hover { color: var(--accent); }
+    .footer-tag:hover { color: var(--mistral-orange); }
     .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
 
     /* ==================== SCROLL REVEAL ==================== */
@@ -416,6 +444,7 @@
         <li><a href="#roadmap">What's Next</a></li>
         <li><a href="#proof">Proof</a></li>
         <li><a href="#compare">Compare</a></li>
+        <li><a href="#mistral">Mistral</a></li>
         <li><a href="https://github.com/AaronGrace978/SecurityPrime">GitHub</a></li>
       </ul>
     </div>
@@ -426,11 +455,12 @@
     <!-- ============================== HERO ============================== -->
     <section class="hero">
       <div class="hero-content">
-        <div class="hero-badge"><span class="pulse"></span> v0.1.0 &mdash; Ready for Release</div>
-        <h1>Cybersecurity that<br><span class="gradient">actually works.</span></h1>
+        <img src="./mistral.gif" alt="Mistral Hackathon 2026" class="hero-mistral-gif" onerror="this.onerror=null; this.src='./animated-sitting-cat.webp';" />
+        <div class="hero-badge"><span class="pulse"></span> Mistral Hackathon 2026</div>
+        <h1>AI-Native Endpoint Security.<br><span class="gradient">Trust Through Observability.</span></h1>
         <p class="subtitle">
-          SecurityPrime is a modular, all-in-one desktop security suite built with Rust, Tauri &amp; Svelte.
-          Not from a Fortune 500 vendor. Not from a traditional CS team. <strong style="color:var(--text)">And it works.</strong>
+          SecurityPrime uses Mistral models as the core reasoning layer. Multi-model routing via Ollama (cloud + local).
+          Built with Rust, Tauri &amp; SvelteKit. <strong style="color:var(--text)">Open source. Auditable.</strong>
         </p>
         <div class="hero-buttons">
           <a class="btn btn-primary" href="https://github.com/AaronGrace978/SecurityPrime">Get the Source</a>
@@ -460,6 +490,45 @@
         </div>
       </div>
     </div>
+
+    <!-- ============================== MISTRAL INDEX ============================== -->
+    <section class="section mistral-section" id="mistral">
+      <div class="mistral-rainbow-bar"></div>
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">Mistral AI Hackathon 2026</div>
+          <h2 class="section-title">Project Overview</h2>
+          <p class="section-subtitle">SecurityPrime by Aaron Grace — AI-Native Endpoint Security</p>
+        </div>
+        <div class="feature-grid" style="margin-bottom:2rem">
+          <div class="feature-card reveal">
+            <div class="feature-icon">&#x1f4da;</div>
+            <h3>Quick Links</h3>
+            <p>
+              <a href="./docs/MistralIndex_PitchDeck.md" style="color:var(--mistral-orange)">Pitch Deck</a> &middot;
+              <a href="./README.md" style="color:var(--mistral-orange)">README</a> &middot;
+              <a href="./docs/LITTLE_SNITCH_INTEGRATION.md" style="color:var(--mistral-orange)">Little Snitch</a> &middot;
+              <a href="https://aarongrace978.github.io/SecurityPrime-Coming-soon/" style="color:var(--mistral-orange)" target="_blank" rel="noopener">Landing</a>
+            </p>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <div class="feature-icon">&#x1f9e0;</div>
+            <h3>Mistral Usage</h3>
+            <p><strong>Mistral Large 3</strong> — Deep threat analysis, CVE audits. <strong>Ministral</strong> — Fast triage. <strong>Devstral Small 2</strong> — Remediation scripts. <strong>Pixtral</strong> — Visual phishing detection.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-2">
+            <div class="feature-icon">&#x1f512;</div>
+            <h3>Differentiator</h3>
+            <p><strong>Trust through observability</strong> — Little Snitch integration for macOS: recommended allow/deny rules for AI endpoints, domain trust classification, one-click .lsrules export.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-3">
+            <div class="feature-icon">&#x2699;</div>
+            <h3>Tech Stack</h3>
+            <p>Rust &middot; Tauri &middot; SvelteKit &middot; Mistral (Ollama) &middot; SQLite &middot; PostgreSQL</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- ============================== FEATURES ============================== -->
     <section class="section" id="features">
@@ -536,7 +605,7 @@
           <div class="release-item reveal">
             <div class="release-icon">&#x1f4e6;</div>
             <h4>MSI &amp; NSIS Installers</h4>
-            <p>One command: <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.78rem">npm run tauri build</code></p>
+            <p>One command: <code style="color:var(--mistral-orange);font-family:'JetBrains Mono',monospace;font-size:0.78rem">npm run tauri build</code></p>
           </div>
           <div class="release-item reveal reveal-delay-1">
             <div class="release-icon">&#x1f4d6;</div>
@@ -919,7 +988,7 @@
       draw() {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 217, 255, ${this.alpha})`;
+        ctx.fillStyle = `rgba(255, 130, 5, ${this.alpha})`;
         ctx.fill();
       }
     }
@@ -939,7 +1008,7 @@
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(0, 217, 255, ${0.08 * (1 - dist / 150)})`;
+            ctx.strokeStyle = `rgba(255, 130, 5, ${0.08 * (1 - dist / 150)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -953,7 +1022,7 @@
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(mouse.x, mouse.y);
-            ctx.strokeStyle = `rgba(0, 217, 255, ${0.15 * (1 - dist / 200)})`;
+            ctx.strokeStyle = `rgba(255, 130, 5, ${0.15 * (1 - dist / 200)})`;
             ctx.lineWidth = 0.6;
             ctx.stroke();
           }

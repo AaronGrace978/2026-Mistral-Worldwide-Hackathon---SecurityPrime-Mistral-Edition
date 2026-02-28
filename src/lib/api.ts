@@ -81,10 +81,21 @@ export interface SecurityBreakdown {
 	vulnerabilities: number;
 }
 
+export interface ScoreImprovement {
+	id: string;
+	title: string;
+	description: string;
+	points: number;
+	category: string;
+	action: string;
+	difficulty: string;
+}
+
 export interface SecurityScore {
 	score: number;
 	grade: string;
 	breakdown: SecurityBreakdown;
+	improvements: ScoreImprovement[];
 }
 
 export type ModuleStatusType = 'active' | 'inactive' | 'warning' | 'error' | 'scanning';
@@ -131,6 +142,34 @@ export interface ThreatAlert {
 	source: string;
 	timestamp: string;
 	resolved: boolean;
+	confidence: number;
+	dedupe_key?: string;
+}
+
+export interface BenchmarkComparison {
+	your_score: number;
+	average_score: number;
+	top_10_percent: number;
+	percentile: number;
+	categories: BenchmarkCategory[];
+	sample_size: number;
+}
+
+export interface BenchmarkCategory {
+	name: string;
+	your_value: number;
+	average_value: number;
+	status: string;
+}
+
+export interface HardeningStep {
+	id: string;
+	title: string;
+	description: string;
+	category: string;
+	completed: boolean;
+	impact: string;
+	action: string;
 }
 
 // Scanner types
@@ -547,12 +586,24 @@ export async function getThreatAlerts(): Promise<ThreatAlert[]> {
 	return safeInvoke<ThreatAlert[]>('get_threat_alerts');
 }
 
+export async function getBenchmarkComparison(): Promise<BenchmarkComparison> {
+	return safeInvoke<BenchmarkComparison>('get_benchmark_comparison');
+}
+
+export async function getHardeningSteps(): Promise<HardeningStep[]> {
+	return safeInvoke<HardeningStep[]>('get_hardening_steps');
+}
+
 // ============================================================================
 // Scanner API
 // ============================================================================
 
 export async function startScan(scanType: string): Promise<ScanSession> {
 	return safeInvoke<ScanSession>('start_scan', { scanType });
+}
+
+export async function startCustomScan(targetPaths: string[]): Promise<ScanSession> {
+	return safeInvoke<ScanSession>('start_custom_scan', { targetPaths });
 }
 
 export async function getScanStatus(scanId: string): Promise<ScanStatus> {
@@ -1195,8 +1246,8 @@ export async function scanWithYara(filePaths: string[]): Promise<YaraScanResult[
 	return safeInvoke<YaraScanResult[]>('scan_with_yara', { filePaths });
 }
 
-export async function performAdvancedScan(targetPaths: string[]): Promise<AdvancedScanResult> {
-	return safeInvoke<AdvancedScanResult>('perform_advanced_scan', { targetPaths });
+export async function performAdvancedScan(scanType: ScanType, targetPaths?: string[]): Promise<AdvancedScanResults> {
+	return safeInvoke<AdvancedScanResults>('perform_advanced_scan', { scanType, targetPaths: targetPaths ?? null });
 }
 
 export async function initializeYaraRules(): Promise<void> {
@@ -1903,7 +1954,11 @@ function getMockData(command: string, _args?: Record<string, unknown>): unknown 
 				encryption: 75,
 				updates: 88,
 				vulnerabilities: 80
-			}
+			},
+			improvements: [
+				{ id: 'enable_encryption', title: 'Enable File Encryption', description: 'Protect sensitive files with AES-256', points: 8, category: 'encryption', action: 'toggle_module', difficulty: 'easy' },
+				{ id: 'run_full_scan', title: 'Run a Full System Scan', description: 'A comprehensive scan catches threats a quick scan might miss', points: 7, category: 'antivirus', action: 'navigate', difficulty: 'easy' },
+			]
 		},
 		get_module_status: [
 			{ name: 'scanner', status: 'active', enabled: true, description: 'Real-time malware scanner', last_activity: '2 minutes ago' },
@@ -1927,8 +1982,25 @@ function getMockData(command: string, _args?: Record<string, unknown>): unknown 
 			alerts_today: 3
 		},
 		get_threat_alerts: [
-			{ id: '1', title: 'Potential Malware Detected', description: 'Suspicious file behavior detected.', severity: 'high', source: 'Real-time Scanner', timestamp: new Date().toISOString(), resolved: false },
-			{ id: '2', title: 'Unusual Network Activity', description: 'Multiple connection attempts detected.', severity: 'medium', source: 'Network Monitor', timestamp: new Date().toISOString(), resolved: false }
+			{ id: '1', title: 'Potential Malware Detected', description: 'Suspicious file behavior detected.', severity: 'high', source: 'Real-time Scanner', timestamp: new Date().toISOString(), resolved: false, confidence: 0.88, dedupe_key: 'scanner:malware:high' },
+			{ id: '2', title: 'Unusual Network Activity', description: 'Multiple connection attempts detected.', severity: 'medium', source: 'Network Monitor', timestamp: new Date().toISOString(), resolved: false, confidence: 0.72, dedupe_key: 'network:activity:medium' }
+		],
+		get_benchmark_comparison: {
+			your_score: 85, average_score: 62, top_10_percent: 88, percentile: 82,
+			categories: [
+				{ name: 'Firewall', your_value: 90, average_value: 68, status: 'above' },
+				{ name: 'Antivirus', your_value: 85, average_value: 72, status: 'above' },
+				{ name: 'Encryption', your_value: 75, average_value: 45, status: 'above' },
+				{ name: 'Updates', your_value: 88, average_value: 65, status: 'above' },
+				{ name: 'Vulnerabilities', your_value: 80, average_value: 58, status: 'above' },
+			],
+			sample_size: 2847
+		},
+		get_hardening_steps: [
+			{ id: 'fw', title: 'Enable Firewall Protection', description: 'Monitor and control network traffic', category: 'Network', completed: true, impact: 'high', action: 'toggle_module:firewall' },
+			{ id: 'av', title: 'Activate Malware Scanner', description: 'Enable real-time scanning', category: 'Endpoint', completed: true, impact: 'critical', action: 'toggle_module:scanner' },
+			{ id: 'enc', title: 'Set Up File Encryption', description: 'Protect sensitive files', category: 'Data', completed: false, impact: 'high', action: 'toggle_module:encryption' },
+			{ id: 'vuln', title: 'Run Vulnerability Scan', description: 'Check for CVEs', category: 'Endpoint', completed: false, impact: 'high', action: 'navigate:/vulnerability' },
 		],
 		get_firewall_status: {
 			enabled: true,
@@ -2144,11 +2216,11 @@ function getMockData(command: string, _args?: Record<string, unknown>): unknown 
 			}
 		],
 		perform_advanced_scan: {
-			memory_forensics: [],
-			behavioral_analysis: [],
-			yara_matches: [],
-			overall_threat_level: 'low',
-			scan_duration: 45230
+			memory_results: [],
+			behavioral_results: [],
+			yara_results: [],
+			comprehensive_score: 92,
+			overall_risk_assessment: 'LOW RISK'
 		},
 		initialize_yara_rules: undefined,
 		add_yara_rule: undefined,

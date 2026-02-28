@@ -20,7 +20,9 @@ import {
 	Box,
 	AlertTriangle,
 	Zap,
-	Rocket
+	Rocket,
+	Wand2,
+	Target
 } from 'lucide-svelte';
 
 export interface ModuleInfo {
@@ -44,6 +46,24 @@ export const allModules: ModuleInfo[] = [
 		route: '/',
 		category: 'system',
 		color: 'cyber-blue'
+	},
+	{
+		id: 'hardening-wizard',
+		name: 'Hardening Wizard',
+		description: 'Guided 10-minute setup to harden your system',
+		icon: Wand2,
+		route: '/hardening-wizard',
+		category: 'system',
+		color: 'cyber-orange'
+	},
+	{
+		id: 'benchmark',
+		name: 'Benchmark',
+		description: 'Compare your security posture against baselines',
+		icon: Target,
+		route: '/benchmark',
+		category: 'monitoring',
+		color: 'cyber-purple'
 	},
 	{
 		id: 'flagship',

@@ -1,21 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { open } from '@tauri-apps/api/dialog';
 	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Progress } from '$lib/components/ui/progress';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { cn, formatBytes, formatRelativeTime, getSeverityColor } from '$lib/utils';
+	import { cn } from '$lib/utils';
+	import { scanStore } from '$lib/stores/scanner';
 	import * as api from '$lib/api';
 	import {
 		Shield,
 		Play,
 		Square,
 		Folder,
+		FolderPlus,
 		HardDrive,
 		Zap,
 		AlertTriangle,
-		CheckCircle,
 		Clock,
 		FileSearch,
 		Trash2,
@@ -24,21 +26,38 @@
 		Activity,
 		Search,
 		Target,
-		Cpu,
-		Database
+		X
 	} from 'lucide-svelte';
 
-	let scanSession: api.ScanSession | null = null;
-	let scanStatus: api.ScanStatus | null = null;
-	let scanResults: api.ScanResults | null = null;
-	let advancedScanResults: api.AdvancedScanResults | null = null;
-	let isScanning = false;
-	let selectedScanType = 'quick';
-	let scanMode = 'basic'; // 'basic' or 'advanced'
-	let selectedAdvancedScanType: api.ScanType = 'comprehensive';
-	let memoryResults: api.MemoryScanResult[] = [];
-	let behavioralResults: api.BehavioralAnalysis[] = [];
-	let yaraResults: api.YaraScanResult[] = [];
+	$: isScanning = $scanStore.isScanning;
+	$: scanStatus = $scanStore.scanStatus;
+	$: scanResults = $scanStore.scanResults;
+	$: advancedScanResults = $scanStore.advancedScanResults;
+	$: scanMode = $scanStore.scanMode;
+	$: selectedScanType = $scanStore.scanType;
+	$: selectedAdvancedScanType = $scanStore.advancedScanType;
+	$: memoryResults = $scanStore.memoryResults;
+	$: behavioralResults = $scanStore.behavioralResults;
+	$: yaraResults = $scanStore.yaraResults;
+
+	$: customPaths = $scanStore.customPaths;
+	$: activeScanName = scanMode === 'basic'
+		? scanTypes.find(t => t.id === selectedScanType)?.name ?? 'Quick Scan'
+		: advancedScanTypes.find(t => t.id === selectedAdvancedScanType)?.name ?? 'Advanced Scan';
+
+	async function addFolder() {
+		try {
+			const selected = await open({ directory: true, multiple: true, title: 'Select folders to scan' });
+			if (selected) {
+				const paths = Array.isArray(selected) ? selected : [selected];
+				for (const p of paths) {
+					scanStore.addCustomPath(p);
+				}
+			}
+		} catch (err) {
+			console.error('Folder picker failed:', err);
+		}
+	}
 
 	const scanTypes = [
 		{ id: 'quick', name: 'Quick Scan', description: 'Scan common threat locations', icon: Zap, duration: '~5 min' },
@@ -81,100 +100,18 @@
 		}
 	];
 
-	let pollInterval: ReturnType<typeof setInterval> | null = null;
-
-	async function startScan() {
-		try {
-			isScanning = true;
-			scanResults = null;
-
-			if (scanMode === 'basic') {
-				scanSession = await api.startScan(selectedScanType);
-
-				pollInterval = setInterval(async () => {
-					if (!scanSession) { clearPoll(); return; }
-					try {
-						scanStatus = await api.getScanStatus(scanSession.id);
-						if (scanStatus.status === 'completed' || scanStatus.status === 'stopped') {
-							clearPoll();
-							scanResults = await api.getScanResults(scanSession.id);
-							isScanning = false;
-						}
-					} catch {
-						clearPoll();
-						isScanning = false;
-					}
-				}, 600);
-			} else {
-				advancedScanResults = null;
-
-				scanSession = await api.startScan('full');
-
-				pollInterval = setInterval(async () => {
-					if (!scanSession) { clearPoll(); return; }
-					try {
-						scanStatus = await api.getScanStatus(scanSession.id);
-						if (scanStatus.status === 'completed' || scanStatus.status === 'stopped') {
-							clearPoll();
-
-							try {
-								advancedScanResults = await api.performAdvancedScan(selectedAdvancedScanType);
-								if (advancedScanResults.memory_results) memoryResults = advancedScanResults.memory_results;
-								if (advancedScanResults.behavioral_results) behavioralResults = advancedScanResults.behavioral_results;
-								if (advancedScanResults.yara_results) yaraResults = advancedScanResults.yara_results;
-							} catch (error) {
-								console.error('Failed to get advanced scan results:', error);
-							}
-
-							isScanning = false;
-						}
-					} catch {
-						clearPoll();
-						isScanning = false;
-					}
-				}, 800);
-			}
-		} catch (error) {
-			console.error('Failed to start scan:', error);
-			isScanning = false;
-		}
-	}
-
-	function clearPoll() {
-		if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
-	}
-
-	async function stopScan() {
-		if (scanSession) {
-			try { await api.stopScan(scanSession.id); } catch {}
-		}
-		clearPoll();
-		isScanning = false;
-		scanSession = null;
-		scanStatus = null;
-		advancedScanResults = null;
-		memoryResults = [];
-		behavioralResults = [];
-		yaraResults = [];
-	}
-
 	async function quarantineAll() {
 		try {
 			await api.quarantineThreats([]);
-			if (scanSession) {
-				scanResults = await api.getScanResults(scanSession.id);
-			}
+			scanStore.loadLastResults();
 		} catch (error) {
 			console.error('Quarantine failed:', error);
 		}
 	}
 
-	onMount(async () => {
-		// Load last scan results
-		try {
-			scanResults = await api.getScanResults('last');
-		} catch (error) {
-			console.log('No previous scan results');
+	onMount(() => {
+		if (!$scanStore.isScanning) {
+			scanStore.loadLastResults();
 		}
 	});
 </script>
@@ -218,22 +155,22 @@
 							</CardDescription>
 						</div>
 						<div class="flex gap-2">
-							<Button
-								variant={scanMode === 'basic' ? 'default' : 'outline'}
-								size="sm"
-								on:click={() => scanMode = 'basic'}
-							>
-								<FileSearch class="w-4 h-4 mr-2" />
-								Basic Scan
-							</Button>
-							<Button
-								variant={scanMode === 'advanced' ? 'default' : 'outline'}
-								size="sm"
-								on:click={() => scanMode = 'advanced'}
-							>
-								<Brain class="w-4 h-4 mr-2" />
-								Advanced Scan
-							</Button>
+						<Button
+							variant={scanMode === 'basic' ? 'default' : 'outline'}
+							size="sm"
+							on:click={() => scanStore.setScanMode('basic')}
+						>
+							<FileSearch class="w-4 h-4 mr-2" />
+							Basic Scan
+						</Button>
+						<Button
+							variant={scanMode === 'advanced' ? 'default' : 'outline'}
+							size="sm"
+							on:click={() => scanStore.setScanMode('advanced')}
+						>
+							<Brain class="w-4 h-4 mr-2" />
+							Advanced Scan
+						</Button>
 						</div>
 					</div>
 				</CardHeader>
@@ -246,17 +183,17 @@
 									<div class="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
 									<div>
 										<p class="font-medium">
-											{scanMode === 'advanced' ? 'Advanced' : 'Basic'} Scanning in progress...
+											{activeScanName} in progress...
 										</p>
 										<p class="text-sm text-muted-foreground">
 											{scanStatus.current_file || 'Preparing...'}
 										</p>
 									</div>
 								</div>
-								<Button variant="destructive" size="sm" on:click={stopScan}>
-									<Square class="w-4 h-4 mr-2" />
-									Stop Scan
-								</Button>
+							<Button variant="destructive" size="sm" on:click={() => scanStore.stopScan()}>
+								<Square class="w-4 h-4 mr-2" />
+								Stop Scan
+							</Button>
 							</div>
 
 							<div class="space-y-2">
@@ -270,9 +207,7 @@
 							<div class="grid grid-cols-3 gap-4">
 								<div class="p-3 rounded-lg bg-muted/50">
 									<p class="text-2xl font-bold text-foreground">{scanStatus.scanned_files.toLocaleString()}</p>
-									<p class="text-xs text-muted-foreground">
-										{scanMode === 'advanced' ? 'Items Analyzed' : 'Files Scanned'}
-									</p>
+								<p class="text-xs text-muted-foreground">Files Scanned</p>
 								</div>
 								<div class="p-3 rounded-lg bg-muted/50">
 									<p class="text-2xl font-bold text-neon-red">{scanStatus.threats_found}</p>
@@ -296,7 +231,7 @@
 												? 'border-primary bg-primary/5'
 												: 'border-border hover:border-primary/50'
 										)}
-										on:click={() => (selectedScanType = scanType.id)}
+										on:click={() => scanStore.setScanType(scanType.id)}
 									>
 										<svelte:component this={scanType.icon} class={cn(
 											'w-8 h-8 mb-3',
@@ -308,6 +243,43 @@
 									</button>
 								{/each}
 							</div>
+
+							{#if selectedScanType === 'custom'}
+								<div class="mt-4 p-4 rounded-lg border border-border bg-muted/30 space-y-3">
+									<div class="flex items-center justify-between">
+										<h4 class="text-sm font-medium flex items-center gap-2">
+											<Folder class="w-4 h-4 text-primary" />
+											Target Folders
+										</h4>
+										<Button variant="outline" size="sm" on:click={addFolder}>
+											<FolderPlus class="w-4 h-4 mr-2" />
+											Add Folder
+										</Button>
+									</div>
+									{#if customPaths.length === 0}
+										<p class="text-sm text-muted-foreground text-center py-4">
+											No folders selected. Click "Add Folder" to choose directories to scan.
+										</p>
+									{:else}
+										<div class="space-y-2 max-h-40 overflow-y-auto">
+											{#each customPaths as path}
+												<div class="flex items-center justify-between px-3 py-2 rounded-md bg-background border border-border">
+													<div class="flex items-center gap-2 min-w-0">
+														<Folder class="w-4 h-4 text-primary shrink-0" />
+														<span class="text-sm truncate">{path}</span>
+													</div>
+													<button
+														class="p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors shrink-0"
+														on:click={() => scanStore.removeCustomPath(path)}
+													>
+														<X class="w-3.5 h-3.5" />
+													</button>
+												</div>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{/if}
 						{:else}
 							<div class="grid grid-cols-2 gap-4">
 								{#each advancedScanTypes as scanType}
@@ -318,7 +290,7 @@
 												? 'border-primary bg-primary/5'
 												: 'border-border hover:border-primary/50'
 										)}
-										on:click={() => (selectedAdvancedScanType = scanType.id)}
+										on:click={() => scanStore.setAdvancedScanType(scanType.id)}
 									>
 										<svelte:component this={scanType.icon} class={cn(
 											'w-8 h-8 mb-3',
@@ -332,12 +304,16 @@
 							</div>
 						{/if}
 
-						<Button variant="cyber" size="lg" class="w-full" on:click={startScan}>
-							<Play class="w-5 h-5 mr-2" />
-							Start {scanMode === 'basic'
-								? scanTypes.find(t => t.id === selectedScanType)?.name
-								: advancedScanTypes.find(t => t.id === selectedAdvancedScanType)?.name}
-						</Button>
+					<Button
+						variant="cyber"
+						size="lg"
+						class="w-full"
+						disabled={selectedScanType === 'custom' && scanMode === 'basic' && customPaths.length === 0}
+						on:click={() => scanStore.startScan()}
+					>
+						<Play class="w-5 h-5 mr-2" />
+						Start {activeScanName}
+					</Button>
 					{/if}
 				</CardContent>
 			</Card>

@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { fade, fly } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
 	import { theme } from '$lib/stores/theme';
 	import { initSecurityData } from '$lib/stores/security';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import ScanWidget from '$lib/components/ScanWidget.svelte';
 	import MistralPixelCat from '$lib/components/MistralPixelCat.svelte';
 	import '../app.css';
 
@@ -30,18 +28,11 @@
 	<!-- Main Content -->
 	<main class="flex-1 overflow-auto">
 		<div class="min-h-full p-6">
-			{#if mounted}
-				{#key $page.url.pathname}
-					<div
-						in:fly={{ x: 10, duration: 200, delay: 50, easing: cubicOut }}
-						out:fade={{ duration: 100 }}
-					>
-						<slot />
-					</div>
-				{/key}
-			{:else}
+		{#if mounted}
+			<slot />
+		{:else}
 				<!-- Loading state -->
-				<div class="flex items-center justify-center h-full" in:fade>
+				<div class="flex items-center justify-center h-full">
 					<div class="flex flex-col items-center gap-5">
 						<MistralPixelCat size={120} animated={true} />
 						<div class="flex flex-col items-center gap-2">
@@ -66,6 +57,8 @@
 		</div>
 	</main>
 </div>
+
+<ScanWidget />
 
 <!-- Global scan line effect (optimized: uses will-change for GPU acceleration, reduced opacity) -->
 <!-- Note: Animation paused when tab is not visible via CSS media query -->

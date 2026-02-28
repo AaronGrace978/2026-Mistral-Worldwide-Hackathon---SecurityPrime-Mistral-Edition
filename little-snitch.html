@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Little Snitch Integration — SecurityPrime</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mistral-gradient: linear-gradient(135deg, #e10500, #fa500f, #ff8205, #ffaf00, #ffd800);
+      --bg: #0a0a0a;
+      --surface: rgba(30, 30, 30, 0.95);
+      --border: rgba(255, 130, 5, 0.2);
+      --border-bright: rgba(255, 130, 5, 0.5);
+      --text: #fff0eb;
+      --muted: #b8b0a0;
+      --accent: #ff8205;
+      --success: #22c55e;
+      --warn: #ffaf00;
+      --danger: #e10500;
+      --glow: 0 0 30px rgba(255, 130, 5, 0.25);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.12; pointer-events: none; z-index: 0; }
+    .orb-1 { width: 500px; height: 500px; background: #ff8205; top: -150px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: #22c55e; bottom: -100px; left: -50px; }
+
+    .page { position: relative; z-index: 1; }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      background: rgba(10, 10, 10, 0.92);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 900px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.8rem 2rem;
+    }
+    .nav-logo {
+      font-size: 1rem; font-weight: 800;
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; text-decoration: none;
+    }
+    .nav-back {
+      color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 500;
+      display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--accent); }
+
+    /* Content */
+    .container { max-width: 900px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Hero */
+    .hero {
+      padding: 5rem 0 3rem; text-align: center;
+    }
+    .hero-icon {
+      width: 80px; height: 80px; border-radius: 20px; margin: 0 auto 1.5rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem;
+      background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; letter-spacing: -1.5px;
+      margin-bottom: 1rem; line-height: 1.15;
+    }
+    .hero h1 .grad {
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p { color: var(--muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+    .badge-row { display: flex; gap: 0.6rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 0.35rem 0.8rem; border-radius: 8px;
+    }
+    .badge-green { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .badge-orange { background: rgba(255, 130, 5, 0.15); color: var(--accent); }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .badge-green .badge-dot { background: var(--success); }
+    .badge-orange .badge-dot { background: var(--accent); }
+
+    /* Sections */
+    .section { padding: 3rem 0; }
+    .section-title {
+      font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px;
+      margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .section-title .icon { font-size: 1.3rem; }
+
+    /* Cards */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.75rem; margin-bottom: 1.25rem;
+      backdrop-filter: blur(10px); transition: all 0.3s;
+    }
+    .card:hover { border-color: var(--border-bright); }
+    .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .card p, .card li { color: var(--muted); font-size: 0.9rem; line-height: 1.7; }
+    .card ul { list-style: none; padding: 0; }
+    .card li { padding: 0.3rem 0; padding-left: 1.5rem; position: relative; }
+    .card li::before {
+      content: '→'; position: absolute; left: 0; color: var(--accent); font-weight: 600;
+    }
+
+    /* Phase grid */
+    .phase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    @media (max-width: 640px) { .phase-grid { grid-template-columns: 1fr; } }
+    .phase-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;
+      transition: all 0.3s;
+    }
+    .phase-card:hover { border-color: var(--border-bright); transform: translateY(-3px); }
+    .phase-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .phase-card.complete::before { background: var(--success); }
+    .phase-card.planned::before { background: var(--accent); }
+    .phase-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 0.6rem;
+    }
+    .phase-card.complete .phase-label { color: var(--success); }
+    .phase-card.planned .phase-label { color: var(--accent); }
+    .phase-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .phase-card p { color: var(--muted); font-size: 0.85rem; }
+
+    /* Command table */
+    .table-wrap {
+      overflow-x: auto; border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { padding: 0.85rem 1.2rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    th {
+      font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--muted); background: rgba(255, 130, 5, 0.06);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255, 130, 5, 0.03); }
+    td:first-child { font-weight: 600; }
+    code {
+      background: rgba(255, 130, 5, 0.12); color: var(--accent);
+      padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.82rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Domain tags */
+    .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    @media (max-width: 640px) { .domain-grid { grid-template-columns: 1fr; } }
+    .domain-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem; transition: all 0.3s;
+    }
+    .domain-card:hover { border-color: var(--border-bright); }
+    .domain-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.5rem; }
+    .domain-tag {
+      display: inline-block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      padding: 0.15rem 0.5rem; border-radius: 5px; letter-spacing: 0.3px;
+    }
+    .tag-allow { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .tag-deny { background: rgba(225, 5, 0, 0.15); color: var(--danger); }
+    .tag-local { background: rgba(255, 175, 0, 0.15); color: var(--warn); }
+    .tag-cdn { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+    .domain-list { list-style: none; padding: 0; }
+    .domain-list li {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--muted);
+      padding: 0.25rem 0;
+    }
+
+    /* Callout */
+    .callout {
+      background: rgba(255, 130, 5, 0.06);
+      border: 1px solid var(--border-bright);
+      border-radius: 14px; padding: 1.5rem 1.75rem;
+      margin: 2rem 0; font-style: italic; color: var(--text);
+      font-size: 0.95rem; position: relative;
+    }
+    .callout::before {
+      content: '"'; font-size: 3rem; font-weight: 900; color: var(--accent);
+      position: absolute; top: 0.2rem; left: 1rem; opacity: 0.4; font-style: normal;
+    }
+    .callout p { padding-left: 1.5rem; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem; text-align: center; margin-top: 3rem;
+    }
+    footer p { color: var(--muted); font-size: 0.85rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="./index.html" class="nav-logo">SecurityPrime</a>
+      <a href="./index.html" class="nav-back">← Back to Home</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="container">
+
+      <!-- Hero -->
+      <section class="hero">
+        <div class="hero-icon">🛡️</div>
+        <h1>Little Snitch<br><span class="grad">Integration</span></h1>
+        <p>Process-level outbound visibility and consent-driven network control for macOS. Trust through observability.</p>
+        <div class="badge-row">
+          <span class="badge badge-green"><span class="badge-dot"></span> Phase 1 Complete</span>
+          <span class="badge badge-green"><span class="badge-dot"></span> Phase 2 Complete</span>
+          <span class="badge badge-orange"><span class="badge-dot"></span> macOS Only</span>
+        </div>
+      </section>
+
+      <!-- Why -->
+      <section class="section">
+        <h2 class="section-title"><span class="icon">💡</span> Why This Matters</h2>
+        <div class="card">
+          <ul>
+            <li>Adds user-verifiable outbound control for all app traffic</li>
+            <li>Lets judges validate that SecurityPrime does not phone home unexpectedly</li>
+            <li>Supports a "trust through observability" story for demos and audits</li>
+            <li>Windows users continue using built-in firewall and network monitor flows</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Phases -->
+      <section class="section">
+        <h2 class="section-title"><span class="icon">🚀</span> Implementation Phases</h2>
+        <div class="phase-grid">
+          <div class="phase-card complete">
+            <div class="phase-label">✓ Phase 1 — Complete</div>
+            <h4>Detection & UI</h4>
+            <p>macOS-only UI card in Network Monitor. Auto-detects Little Snitch at standard and Setapp paths. Links to official docs.</p>
+          </div>
+          <div class="phase-card complete">
+            <div class="phase-label">✓ Phase 2 — Complete</div>
+            <h4>Rules Engine & Export</h4>
+            <p>Curated allow/deny rules, domain trust classification, filterable UI table, and one-click <code>.lsrules</code> profile export.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features Detail -->
+      <section class="section">
+        <h2 class="section-title"><span class="icon">⚙️</span> What's Built</h2>
+
+        <div class="card">
+          <h3>🔐 Recommended Rules Engine</h3>
+          <ul>
+            <li>Curated <strong>allow</strong> rules for AI model endpoints (OpenAI, Anthropic, Gemini, Mistral, Groq, Cohere)</li>
+            <li>Allow rules for local model servers (Ollama, LM Studio)</li>
+            <li>Allow rules for OS update domains (Microsoft, Apple)</li>
+            <li><strong>Deny</strong> rules for known telemetry domains (Microsoft, Apple, Google telemetry)</li>
+            <li>Dynamic rules generated from live connections for unknown destinations</li>
+            <li>Filterable rules table in the UI with action/allow/deny views</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>🌐 Domain Trust Classification</h3>
+          <ul>
+            <li>Every unique destination IP/domain from active connections is classified as <strong>trusted</strong>, <strong>unknown</strong>, or <strong>suspicious</strong></li>
+            <li>Built-in domain registry with curated categories</li>
+            <li>Trust summary badges with counts in the UI</li>
+            <li>Filterable domain list with category labels</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>📦 .lsrules Profile Export</h3>
+          <ul>
+            <li>Generates a valid Little Snitch Rule Group JSON file</li>
+            <li>Copy to clipboard or download as <code>SecurityPrime.lsrules</code></li>
+            <li>Import into Little Snitch via <strong>File → New Rule Group From File</strong></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- API Commands -->
+      <section class="section">
+        <h2 class="section-title"><span class="icon">🖥️</span> Backend Commands</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Command</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>get_little_snitch_status</code></td>
+                <td>Detect Little Snitch installation (macOS only)</td>
+              </tr>
+              <tr>
+                <td><code>get_little_snitch_rules</code></td>
+                <td>Generate recommended allow/deny rules</td>
+              </tr>
+              <tr>
+                <td><code>get_little_snitch_domain_trust</code></td>
+                <td>Classify active connection domains by trust level</td>
+              </tr>
+              <tr>
+                <td><code>export_little_snitch_profile</code></td>
+                <td>Export <code>.lsrules</code> JSON for Little Snitch import</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Known Domains -->
+      <section class="section">
+        <h2 class="section-title"><span class="icon">📋</span> Known Domain Registry</h2>
+        <div class="domain-grid">
+          <div class="domain-card">
+            <h4><span class="domain-tag tag-allow">Allow</span> AI Endpoints</h4>
+            <ul class="domain-list">
+              <li>api.openai.com</li>
+              <li>api.anthropic.com</li>
+              <li>generativelanguage.googleapis.com</li>
+              <li>api.mistral.ai</li>
+              <li>api.groq.com</li>
+              <li>api.cohere.ai</li>
+            </ul>
+          </div>
+          <div class="domain-card">
+            <h4><span class="domain-tag tag-local">Local</span> Model Servers</h4>
+            <ul class="domain-list">
+              <li>localhost</li>
+              <li>127.0.0.1</li>
+            </ul>
+          </div>
+          <div class="domain-card">
+            <h4><span class="domain-tag tag-cdn">CDN / Updates</span> Trusted Infra</h4>
+            <ul class="domain-list">
+              <li>update.microsoft.com</li>
+              <li>download.windowsupdate.com</li>
+              <li>swscan.apple.com</li>
+              <li>cdn.jsdelivr.net</li>
+              <li>cdnjs.cloudflare.com</li>
+            </ul>
+          </div>
+          <div class="domain-card">
+            <h4><span class="domain-tag tag-deny">Deny</span> Telemetry</h4>
+            <ul class="domain-list">
+              <li>telemetry.microsoft.com</li>
+              <li>vortex.data.microsoft.com</li>
+              <li>watson.telemetry.microsoft.com</li>
+              <li>metrics.apple.com</li>
+              <li>analytics.google.com</li>
+              <li>firebaselogging.googleapis.com</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Callout -->
+      <div class="callout">
+        <p>SecurityPrime pairs with Little Snitch on macOS for process-level outbound visibility and consent-driven network control. Users can independently verify every network destination our AI features use.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <p><strong style="color:var(--text)">SecurityPrime</strong> — <a href="./index.html">Home</a> · <a href="https://github.com/AaronGrace978/SecurityPrime">GitHub</a> · <a href="https://bostonai.io">BostonAI.io</a></p>
+  </footer>
+</body>
+</html>

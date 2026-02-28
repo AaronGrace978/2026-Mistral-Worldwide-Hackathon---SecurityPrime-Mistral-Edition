@@ -283,6 +283,50 @@ pub fn start_scan(scan_type: &str) -> Result<ScanSession, String> {
     })
 }
 
+/// Start a custom scan on user-specified directories
+pub fn start_custom_scan(target_paths: Vec<String>) -> Result<ScanSession, String> {
+    if target_paths.is_empty() {
+        return Err("No target paths provided".to_string());
+    }
+    {
+        let mut guard = ACTIVE_SCAN.write();
+        if let Some(ref mut existing) = *guard {
+            existing.stop_requested = true;
+        }
+    }
+
+    let id = generate_id();
+    let started_at = now();
+
+    *ACTIVE_SCAN.write() = Some(ScanStateInner {
+        id: id.clone(),
+        scan_type: "custom".to_string(),
+        status: "counting".to_string(),
+        started_at,
+        total_files: 0,
+        scanned_files: 0,
+        threats: Vec::new(),
+        current_file: Some("Counting files...".to_string()),
+        stop_requested: false,
+        completed_at: None,
+    });
+
+    let scan_id = id.clone();
+    std::thread::spawn(move || {
+        run_custom_scan_background(&target_paths, &scan_id);
+    });
+
+    Ok(ScanSession {
+        id,
+        scan_type: "custom".to_string(),
+        status: "running".to_string(),
+        started_at,
+        total_files: 0,
+        scanned_files: 0,
+        threats_found: 0,
+    })
+}
+
 /// Get real-time status of the active scan
 pub fn get_scan_status(scan_id: &str) -> Result<ScanStatus, String> {
     let guard = ACTIVE_SCAN.read();
@@ -438,6 +482,45 @@ fn run_scan_background(scan_type: &str, scan_id: &str) {
     }
 
     // Phase 3 — mark complete
+    let mut guard = ACTIVE_SCAN.write();
+    if let Some(ref mut scan) = *guard {
+        if scan.id != scan_id { return; }
+        if !scan.stop_requested {
+            scan.status = "completed".to_string();
+        }
+        scan.completed_at = Some(now());
+        scan.current_file = None;
+    }
+}
+
+fn run_custom_scan_background(target_paths: &[String], scan_id: &str) {
+    let dirs: Vec<PathBuf> = target_paths
+        .iter()
+        .map(|p| PathBuf::from(p))
+        .filter(|p| p.exists())
+        .collect();
+
+    let mut total: u64 = 0;
+    for dir in &dirs {
+        if is_stopped(scan_id) { return; }
+        total += count_files_recursive(dir, scan_id);
+    }
+
+    {
+        let mut guard = ACTIVE_SCAN.write();
+        if let Some(ref mut scan) = *guard {
+            if scan.id != scan_id { return; }
+            scan.total_files = total.max(1);
+            scan.status = "scanning".to_string();
+            scan.current_file = Some("Starting scan...".to_string());
+        }
+    }
+
+    for dir in &dirs {
+        if is_stopped(scan_id) { return; }
+        scan_files_recursive(dir, scan_id);
+    }
+
     let mut guard = ACTIVE_SCAN.write();
     if let Some(ref mut scan) = *guard {
         if scan.id != scan_id { return; }

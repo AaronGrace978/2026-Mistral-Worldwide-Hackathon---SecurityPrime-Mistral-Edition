@@ -123,10 +123,23 @@ pub struct ThreatAlert {
     pub source: String,
     pub timestamp: DateTime<Utc>,
     pub resolved: bool,
+    #[serde(default = "default_confidence")]
+    pub confidence: f64,
+    #[serde(default)]
+    pub dedupe_key: Option<String>,
 }
+
+fn default_confidence() -> f64 { 0.85 }
 
 impl ThreatAlert {
     pub fn new(title: &str, description: &str, severity: Severity, source: &str) -> Self {
+        let confidence = match severity {
+            Severity::Critical => 0.95,
+            Severity::High => 0.88,
+            Severity::Medium => 0.75,
+            Severity::Low => 0.60,
+        };
+        let dedupe_key = Some(format!("{}:{}:{}", source, title, severity.as_str()));
         Self {
             id: generate_id(),
             title: title.to_string(),
@@ -135,6 +148,8 @@ impl ThreatAlert {
             source: source.to_string(),
             timestamp: now(),
             resolved: false,
+            confidence,
+            dedupe_key,
         }
     }
 }

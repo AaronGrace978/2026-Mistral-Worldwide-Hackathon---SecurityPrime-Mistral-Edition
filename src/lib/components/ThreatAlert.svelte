@@ -11,6 +11,8 @@
 	export let alerts: ThreatAlert[] = [];
 	export let maxHeight = '400px';
 
+	let minConfidence = 0.5;
+
 	const dispatch = createEventDispatcher<{
 		resolve: { id: string };
 		dismiss: { id: string };
@@ -24,7 +26,22 @@
 		dispatch('dismiss', { id });
 	}
 
-	$: unresolvedAlerts = alerts.filter((a) => !a.resolved);
+	$: unresolvedAlerts = alerts
+		.filter((a) => !a.resolved)
+		.filter((a) => (a.confidence ?? 1) >= minConfidence);
+	$: filteredOut = alerts.filter(a => !a.resolved).length - unresolvedAlerts.length;
+
+	function getConfidenceColor(conf: number): string {
+		if (conf >= 0.9) return 'text-green-400';
+		if (conf >= 0.7) return 'text-yellow-400';
+		return 'text-red-400';
+	}
+
+	function getConfidenceLabel(conf: number): string {
+		if (conf >= 0.9) return 'High';
+		if (conf >= 0.7) return 'Medium';
+		return 'Low';
+	}
 
 	function getSeverityStyles(severity: string): string {
 		switch (severity) {
@@ -70,6 +87,19 @@
 				</Badge>
 			{/if}
 		</div>
+		<!-- Confidence Filter -->
+		<div class="flex items-center gap-3 mt-3">
+			<span class="text-[10px] text-muted-foreground shrink-0">Confidence:</span>
+			<input
+				type="range" min="0" max="1" step="0.1"
+				bind:value={minConfidence}
+				class="flex-1 h-1 accent-primary"
+			/>
+			<span class="text-[10px] font-mono text-foreground w-8">{Math.round(minConfidence * 100)}%</span>
+		</div>
+		{#if filteredOut > 0}
+			<p class="text-[10px] text-muted-foreground mt-1">{filteredOut} low-confidence alert{filteredOut > 1 ? 's' : ''} hidden</p>
+		{/if}
 	</CardHeader>
 	<CardContent class="p-0">
 		<ScrollArea class="px-6 pb-6" style="max-height: {maxHeight};">
@@ -128,6 +158,12 @@
 											<span>{alert.source}</span>
 											<span>•</span>
 											<span>{formatRelativeTime(alert.timestamp)}</span>
+											{#if alert.confidence != null}
+												<span>•</span>
+												<span class={getConfidenceColor(alert.confidence)}>
+													{getConfidenceLabel(alert.confidence)} ({Math.round(alert.confidence * 100)}%)
+												</span>
+											{/if}
 										</div>
 
 										<Button 

@@ -743,3 +743,68 @@ pub fn get_compliance_dashboard() -> Result<serde_json::Value, String> {
 
     Ok(dashboard)
 }
+
+#[tauri::command]
+pub fn register_phi_asset(name: String, location: String, owner: String, sensitivity: String) -> Result<String, String> {
+    let mut state = COMPLIANCE_STATE.lock();
+    let asset_id = Uuid::new_v4().to_string();
+
+    let phi_type = match sensitivity.as_str() {
+        "Restricted" => PhiType::ClinicalData,
+        "Confidential" => PhiType::MedicalHistory,
+        _ => PhiType::Demographic,
+    };
+
+    let asset = PhiDataAsset {
+        id: asset_id.clone(),
+        name,
+        phi_type,
+        location,
+        custodian: owner,
+        security_controls: vec!["Encryption at rest".into(), "Access controls".into()],
+        last_assessment: Utc::now(),
+    };
+
+    state.hipaa_data.phi_inventory.push(asset);
+    Ok(asset_id)
+}
+
+#[tauri::command]
+pub fn add_business_associate_agreement(name: String, organization: String, _contact_email: String, start_date: String) -> Result<String, String> {
+    let mut state = COMPLIANCE_STATE.lock();
+    let baa_id = Uuid::new_v4().to_string();
+
+    let agreement_date = chrono::NaiveDate::parse_from_str(&start_date, "%Y-%m-%d")
+        .map(|d| d.and_hms_opt(0, 0, 0).unwrap())
+        .map(|dt| DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc))
+        .unwrap_or_else(|_| Utc::now());
+
+    let baa = BaaRecord {
+        id: baa_id.clone(),
+        partner_name: format!("{} ({})", name, organization),
+        agreement_date,
+        expires_at: agreement_date + chrono::Duration::days(365),
+        phi_shared: vec!["As defined in agreement".into()],
+        status: BaaStatus::Active,
+    };
+
+    state.hipaa_data.business_associate_agreements.push(baa);
+    Ok(baa_id)
+}
+
+#[tauri::command]
+pub fn escalate_breach(breach_id: String) -> Result<(), String> {
+    let mut state = COMPLIANCE_STATE.lock();
+
+    if let Some(breach) = state.breach_incidents.iter_mut().find(|b| b.id == breach_id) {
+        breach.mitigating_actions.push(format!("Escalated to senior management at {}", Utc::now().format("%Y-%m-%d %H:%M")));
+        if breach.severity == BreachSeverity::Medium {
+            breach.severity = BreachSeverity::High;
+        } else if breach.severity == BreachSeverity::High {
+            breach.severity = BreachSeverity::Critical;
+        }
+        Ok(())
+    } else {
+        Err(format!("Breach incident {} not found", breach_id))
+    }
+}

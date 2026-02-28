@@ -7,7 +7,8 @@
   <meta name="description" content="SecurityPrime: AI-Native Endpoint Security. Trust Through Observability. Mistral AI Worldwide Hackathon 2026 submission. Built with Rust, Tauri & Svelte." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     /* Mistral AI brand palette: red → orange → yellow rainbow */
     :root {
@@ -41,7 +42,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.65;
@@ -245,7 +246,7 @@
       background: var(--mistral-gradient);
       opacity: 0; transition: opacity 0.3s;
     }
-    .feature-card:hover { border-color: var(--border-bright); transform: translateY(-4px); }
+    .feature-card:hover { border-color: var(--border-bright); transform: translateY(-4px); box-shadow: var(--glow); }
     .feature-card:hover::before { opacity: 1; }
     .feature-icon {
       width: 48px; height: 48px; border-radius: 12px;
@@ -304,9 +305,9 @@
     .proof-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; }
     .proof-card p { color: var(--muted); font-size: 0.85rem; }
     .proof-card code {
-      background: rgba(255, 130, 5, 0.15); color: var(--mistral-orange);
-      padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem;
-      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 130, 5, 0.12); color: var(--mistral-orange);
+      padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.78rem;
+      font-family: 'JetBrains Mono', monospace; white-space: nowrap;
     }
 
     /* ==================== COMPARISON TABLE ==================== */
@@ -314,6 +315,7 @@
       overflow-x: auto; border-radius: 16px;
       border: 1px solid var(--border);
       background: var(--surface); backdrop-filter: blur(10px);
+      box-shadow: 0 4px 40px rgba(0, 0, 0, 0.3);
     }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
     th, td {
@@ -321,18 +323,26 @@
       border-bottom: 1px solid rgba(255,255,255,0.04);
     }
     th {
-      font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
+      font-weight: 700; font-size: 0.75rem; text-transform: uppercase;
       letter-spacing: 0.5px; color: var(--muted);
       background: rgba(255, 130, 5, 0.08);
     }
-    th:nth-child(2) { color: var(--mistral-orange); }
+    th:nth-child(2) {
+      color: var(--mistral-orange);
+      background: rgba(255, 130, 5, 0.14);
+      border-bottom: 2px solid var(--mistral-orange);
+    }
+    td:nth-child(2) {
+      background: rgba(255, 130, 5, 0.04);
+    }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255, 130, 5, 0.04); }
+    tr:hover td { background: rgba(255, 130, 5, 0.06); }
+    tr:hover td:nth-child(2) { background: rgba(255, 130, 5, 0.1); }
     td:first-child { font-weight: 600; color: var(--text); }
     .t-yes { color: var(--success); font-weight: 600; }
     .t-partial { color: var(--warn); }
-    .t-no { color: var(--muted); }
-    .t-sp { color: var(--mistral-orange); font-weight: 600; }
+    .t-no { color: var(--muted); opacity: 0.6; }
+    .t-sp { color: var(--mistral-orange); font-weight: 700; }
 
     /* ==================== ROADMAP / COMING NEXT ==================== */
     .roadmap-category { margin-bottom: 3rem; }
@@ -372,7 +382,7 @@
     .roadmap-category:nth-child(1) .roadmap-card::after { background: var(--danger); }
     .roadmap-category:nth-child(2) .roadmap-card::after { background: var(--mistral-orange-light); }
     .roadmap-category:nth-child(3) .roadmap-card::after { background: var(--mistral-orange); }
-    .roadmap-card:hover { border-color: var(--border-bright); transform: translateY(-3px); }
+    .roadmap-card:hover { border-color: var(--border-bright); transform: translateY(-3px); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); }
     .roadmap-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
     .roadmap-card p { color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
     .roadmap-badge {
@@ -508,7 +518,7 @@
             <p>
               <a href="./docs/MistralIndex_PitchDeck.md" style="color:var(--mistral-orange)">Pitch Deck</a> &middot;
               <a href="./README.md" style="color:var(--mistral-orange)">README</a> &middot;
-              <a href="./docs/LITTLE_SNITCH_INTEGRATION.md" style="color:var(--mistral-orange)">Little Snitch</a> &middot;
+              <a href="./little-snitch.html" style="color:var(--mistral-orange)">Little Snitch</a> &middot;
               <a href="https://aarongrace978.github.io/SecurityPrime-Coming-soon/" style="color:var(--mistral-orange)" target="_blank" rel="noopener">Landing</a>
             </p>
           </div>
@@ -686,9 +696,9 @@
     <section class="section" id="roadmap">
       <div class="container">
         <div class="section-header reveal">
-          <div class="section-tag">What's Coming</div>
-          <h2 class="section-title">We're not done.<br>Not even close.</h2>
-          <p class="section-subtitle">These high-impact enhancements are actively being added. SecurityPrime is evolving from strong foundations into a full EDR-class product.</p>
+          <div class="section-tag">Shipped &amp; Shipping</div>
+          <h2 class="section-title">15 of 16 features shipped.<br>Two more in the forge.</h2>
+          <p class="section-subtitle">SecurityPrime has evolved from strong foundations into a full EDR-class product. Almost every planned feature is live and wired in.</p>
         </div>
 
         <!-- HIGH-IMPACT ENHANCEMENTS -->
@@ -705,7 +715,7 @@
               <p>One-click or auto actions when threat score crosses a threshold &mdash; isolate process, block IP, quarantine file, disable startup item. Configurable runbooks, not just alerts.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-1">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Attack Surface Dashboard</h4>
               <p>Combines vuln scan + firewall + running services + exposed ports into a single "exposure map" with a live risk score. One view, total visibility.</p>
             </div>
@@ -741,9 +751,9 @@
           </div>
           <div class="roadmap-grid">
             <div class="roadmap-card reveal">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Tamper Protection</h4>
-              <p>Lock settings and rules behind admin + local PIN. Detect and alert on attempted disablement &mdash; malware can't silently turn off your defenses.</p>
+              <p>File integrity checks, anomaly detection, and secure boot verification. Detects and alerts on attempted disablement &mdash; malware can't silently turn off your defenses.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-1">
               <span class="roadmap-badge badge-building">Building</span>
@@ -751,24 +761,24 @@
               <p>Ship curated detection and rule updates with signature verification. Users know rules haven't been tampered with; MSPs can push trusted updates.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-2">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Local-First AI Copilot</h4>
-              <p>On-device model for triage summaries &mdash; "what happened + what to do next" &mdash; with optional cloud assist. Private by default, smart always.</p>
+              <p>On-device Ollama model for triage summaries &mdash; "what happened + what to do next" &mdash; with optional Mistral cloud assist. Private by default, smart always.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-3">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Audit-Ready Reporting</h4>
-              <p>Export SOC-style reports (PDF / JSON) for incidents, scan history, and remediation steps. Hand it to your auditor or your client.</p>
+              <p>Export SOC-style reports (JSON / HTML) for incidents, scan history, and compliance audits. Hand it to your auditor or your client.</p>
             </div>
             <div class="roadmap-card reveal">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Compliance Profiles</h4>
-              <p>Presets mapped to CIS / NIST-lite controls for SMBs. One-click "Hardened Workstation" mode that enforces a vetted security baseline.</p>
+              <p>Full GDPR + HIPAA compliance dashboards with report generation, breach management, PHI tracking, and consent management. Audit-ready out of the box.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-1">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Secure Key Vault</h4>
-              <p>Encrypted backup for crypto keys + recovery phrase flow for the file encryption module. Keys are protected even if the host is compromised.</p>
+              <p>OS-native keychain integration (Windows Credential Manager, macOS Keychain, Linux Secret Service) for API keys and encryption credentials.</p>
             </div>
           </div>
         </div>
@@ -782,24 +792,24 @@
           </div>
           <div class="roadmap-grid">
             <div class="roadmap-card reveal">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>First 10 Minutes Hardening Wizard</h4>
-              <p>Guided onboarding that walks new users through critical hardening steps in their first session. Instant security posture boost, zero expertise required.</p>
+              <p>Guided onboarding that walks new users through 8 critical hardening steps with progress tracking. Instant security posture boost, zero expertise required.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-1">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Actionable Security Score</h4>
-              <p>Not just a number &mdash; "+12 points if you enable X, close Y port, update Z." Every score delta is tied to a specific, one-click fix.</p>
+              <p>Not just a number &mdash; "+12 points if you enable X, +15 if you activate Y." Every score delta is tied to a specific, one-click fix.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-2">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Noise Reduction</h4>
-              <p>Confidence levels + deduped alerts to kill alert fatigue. Only surface what matters, with context, so users actually read the alerts.</p>
+              <p>Confidence levels + deduped alerts to kill alert fatigue. Adjustable threshold slider filters low-confidence noise so users only see what matters.</p>
             </div>
             <div class="roadmap-card reveal reveal-delay-3">
-              <span class="roadmap-badge badge-building">Building</span>
+              <span class="roadmap-badge badge-shipped">Shipped</span>
               <h4>Benchmark Mode</h4>
-              <p>Compare your device posture against anonymized local baselines (opt-in). See where you stand vs. similar setups &mdash; gamified security that drives action.</p>
+              <p>Compare your device posture against anonymized baselines. Per-category breakdown shows where you stand vs. similar setups &mdash; gamified security that drives action.</p>
             </div>
           </div>
         </div>
@@ -945,7 +955,7 @@
         <p>Every feature, every module, every test &mdash; open and inspectable on GitHub.</p>
         <div class="hero-buttons" style="margin-top:1.5rem">
           <a class="btn btn-primary" href="https://github.com/AaronGrace978/SecurityPrime">View on GitHub</a>
-          <a class="btn btn-secondary" href="./docs/USER_GUIDE.md">Read the Docs</a>
+          <a class="btn btn-secondary" href="./docs/USER_GUIDE.html">Read the Docs</a>
         </div>
       </div>
     </section>
@@ -958,7 +968,7 @@
         <a href="https://github.com/AaronGrace978" target="_blank" rel="noopener noreferrer">AaronGrace978</a>
         <a href="./README.md">README</a>
         <a href="./QUICKSTART.md">Quick Start</a>
-        <a href="./docs/USER_GUIDE.md">User Guide</a>
+        <a href="./docs/USER_GUIDE.html">User Guide</a>
         <a href="./docs/API_REFERENCE.md">API Docs</a>
         <a href="https://bostonai.io" target="_blank" rel="noopener noreferrer">BostonAI.io</a>
       </div>

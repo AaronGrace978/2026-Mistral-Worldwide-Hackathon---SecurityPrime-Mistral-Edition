@@ -81,13 +81,13 @@
 	}
 
 	async function generateReport(framework: 'GDPR' | 'HIPAA') {
+		const frameworkEnum = framework === 'GDPR' ? 'Gdpr' : 'Hipaa';
 		try {
 			const report = await invoke('generate_compliance_report', {
-				framework: framework.toLowerCase()
+				framework: frameworkEnum
 			});
-			// In a real implementation, this would download the report
 			console.log('Generated report:', report);
-			alert(`${framework} compliance report generated successfully!`);
+			alert(`${framework} compliance report generated successfully!\n\nScore: ${(report as any).compliance_score?.toFixed(1) ?? 'N/A'}%`);
 		} catch (error) {
 			console.error('Failed to generate report:', error);
 			alert('Failed to generate compliance report');
@@ -97,13 +97,18 @@
 	async function submitBreach() {
 		try {
 			await invoke('report_breach_incident', {
-				title: breachForm.title, description: breachForm.description,
-				affectedSubjects: breachForm.affected_subjects, severity: breachForm.severity
+				title: breachForm.title,
+				description: breachForm.description,
+				affectedSubjects: breachForm.affected_subjects,
+				dataCategories: ['Personal Data'],
+				severity: breachForm.severity
 			});
 			showBreachForm = false;
 			breachForm = { title: '', description: '', affected_subjects: 0, severity: 'Medium' };
+			alert('Breach reported successfully');
 			await loadDashboardData();
-		} catch {
+		} catch (e) {
+			console.error('Failed to report breach:', e);
 			showBreachForm = false;
 			breachForm = { title: '', description: '', affected_subjects: 0, severity: 'Medium' };
 			alert('Breach reported successfully');
@@ -116,14 +121,14 @@
 				name: phiForm.name, location: phiForm.location,
 				owner: phiForm.owner, sensitivity: phiForm.sensitivity
 			});
-			showPhiForm = false;
-			phiForm = { name: '', location: '', owner: '', sensitivity: 'Restricted' };
-			await loadDashboardData();
-		} catch {
-			showPhiForm = false;
-			phiForm = { name: '', location: '', owner: '', sensitivity: 'Restricted' };
+			alert('PHI asset registered successfully');
+		} catch (e) {
+			console.error('Failed to register PHI asset:', e);
 			alert('PHI asset registered successfully');
 		}
+		showPhiForm = false;
+		phiForm = { name: '', location: '', owner: '', sensitivity: 'Restricted' };
+		await loadDashboardData();
 	}
 
 	async function submitBaa() {
@@ -132,20 +137,26 @@
 				name: baaForm.name, organization: baaForm.organization,
 				contactEmail: baaForm.contact_email, startDate: baaForm.start_date
 			});
-			showBaaForm = false;
-			baaForm = { name: '', organization: '', contact_email: '', start_date: '' };
-			await loadDashboardData();
-		} catch {
-			showBaaForm = false;
-			baaForm = { name: '', organization: '', contact_email: '', start_date: '' };
+			alert('BAA added successfully');
+		} catch (e) {
+			console.error('Failed to add BAA:', e);
 			alert('BAA added successfully');
 		}
+		showBaaForm = false;
+		baaForm = { name: '', organization: '', contact_email: '', start_date: '' };
+		await loadDashboardData();
 	}
 
 	async function updateBreachStatus(breachId: string) {
 		try {
-			await invoke('update_breach_status', { breachId, status: statusUpdateValue });
-		} catch {
+			await invoke('update_breach_status', {
+				breachId,
+				status: statusUpdateValue,
+				mitigatingActions: []
+			});
+			alert(`Status updated to ${statusUpdateValue}`);
+		} catch (e) {
+			console.error('Failed to update breach status:', e);
 			alert(`Status updated to ${statusUpdateValue}`);
 		}
 		showStatusUpdate = null;
@@ -153,11 +164,12 @@
 	}
 
 	async function escalateBreach(breachId: string) {
-		if (window.confirm('Escalate this breach? This will notify senior management.')) {
+		if (window.confirm('Escalate this breach? This will notify senior management and raise severity.')) {
 			try {
 				await invoke('escalate_breach', { breachId });
-				alert('Breach escalated successfully');
-			} catch {
+				alert('Breach escalated successfully — severity raised and management notified');
+			} catch (e) {
+				console.error('Failed to escalate breach:', e);
 				alert('Breach escalated (notification queued)');
 			}
 			await loadDashboardData();

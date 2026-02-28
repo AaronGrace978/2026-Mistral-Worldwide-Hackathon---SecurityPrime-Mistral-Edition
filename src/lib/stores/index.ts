@@ -22,4 +22,5 @@ export {
 	allModules,
 	type ModuleInfo 
 } from './modules';
+export { scanStore, isScanning, scanProgress } from './scanner';
 

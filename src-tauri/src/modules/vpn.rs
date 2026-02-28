@@ -391,18 +391,19 @@ pub async fn get_vpn_status() -> Result<VpnConnection, String> {
 fn detect_active_wireguard_tunnel() -> Option<String> {
     #[cfg(target_os = "windows")]
     {
-        let output = hidden_command("sc")
-            .args(["query", "type=", "service", "state=", "active"])
+        let output = hidden_command("powershell")
+            .args(["-NoProfile", "-Command",
+                "Get-Service | Where-Object { $_.Name -like 'WireGuardTunnel$*' -and $_.Status -eq 'Running' } | ForEach-Object { $_.Name }"])
             .output()
             .ok()?;
-        let text = String::from_utf8_lossy(&output.stdout);
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if text.is_empty() {
+            return None;
+        }
         for line in text.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("SERVICE_NAME:") {
-                let name = trimmed.replace("SERVICE_NAME:", "").trim().to_string();
-                if name.starts_with("WireGuardTunnel$") {
-                    return Some(name.replace("WireGuardTunnel$", ""));
-                }
+            let name = line.trim();
+            if name.starts_with("WireGuardTunnel$") {
+                return Some(name.replace("WireGuardTunnel$", ""));
             }
         }
         None

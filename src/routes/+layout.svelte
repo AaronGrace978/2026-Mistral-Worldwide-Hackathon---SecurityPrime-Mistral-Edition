@@ -6,6 +6,7 @@
 	import { theme } from '$lib/stores/theme';
 	import { initSecurityData } from '$lib/stores/security';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import MistralPixelCat from '$lib/components/MistralPixelCat.svelte';
 	import '../app.css';
 
 	let sidebarCollapsed = false;
@@ -41,14 +42,24 @@
 			{:else}
 				<!-- Loading state -->
 				<div class="flex items-center justify-center h-full" in:fade>
-					<div class="flex flex-col items-center gap-4">
-						<div class="relative w-16 h-16">
-							<div class="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" />
-							<div class="absolute inset-2 rounded-full border-2 border-t-primary border-r-primary border-b-transparent border-l-transparent animate-spin" />
+					<div class="flex flex-col items-center gap-5">
+						<MistralPixelCat size={120} animated={true} />
+						<div class="flex flex-col items-center gap-2">
+							<span class="text-sm text-foreground font-bold tracking-wider">
+								SECURITY PRIME
+							</span>
+							<div class="flex items-center gap-1">
+								{#each ['#E10500', '#FA5010', '#FF8205', '#FFB000', '#FFD800'] as color, i}
+									<div
+										class="w-2 h-2 rounded-sm animate-pulse"
+										style="background: {color}; animation-delay: {i * 150}ms;"
+									/>
+								{/each}
+							</div>
+							<span class="text-xs text-muted-foreground font-medium tracking-wider">
+								INITIALIZING SYSTEMS...
+							</span>
 						</div>
-						<span class="text-sm text-muted-foreground font-medium font-cyber tracking-wider">
-							INITIALIZING SECURITY SYSTEMS...
-						</span>
 					</div>
 				</div>
 			{/if}

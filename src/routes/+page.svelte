@@ -7,6 +7,7 @@
 	import ThreatAlert from '$lib/components/ThreatAlert.svelte';
 	import MistralLogo from '$lib/components/MistralLogo.svelte';
 	import MistralCat from '$lib/components/MistralCat.svelte';
+	import MistralPixelCat from '$lib/components/MistralPixelCat.svelte';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -113,7 +114,7 @@
 				</div>
 			</div>
 			<div class="flex-shrink-0 hidden lg:block">
-				<MistralCat size={56} animated={true} />
+				<MistralPixelCat size={100} animated={true} />
 			</div>
 		</div>
 	</div>
@@ -228,8 +229,8 @@
 				<CardContent class="py-5">
 					<div class="flex items-center gap-6">
 						<div class="relative flex-shrink-0">
-							<div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E10500] via-[#FF8205] to-[#FFD800]">
-								<MistralCat size={42} className="drop-shadow-md" />
+							<div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E10500] via-[#FF8205] to-[#FFD800] p-2">
+								<MistralPixelCat size={56} animated={true} />
 							</div>
 						</div>
 						<div class="flex-1 min-w-0">

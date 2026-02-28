@@ -78,7 +78,7 @@
       "endpoints": []
     },
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.securityprime.io https://localhost:*"
+      "csp": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.securityprime.io https://localhost:* https://fonts.googleapis.com https://fonts.gstatic.com"
     },
     "systemTray": {
       "iconPath": "icons/icon.png",

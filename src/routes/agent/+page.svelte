@@ -37,6 +37,7 @@
 	} from 'lucide-svelte';
 	import MistralCat from '$lib/components/MistralCat.svelte';
 	import MistralLogo from '$lib/components/MistralLogo.svelte';
+	import MistralPixelCat from '$lib/components/MistralPixelCat.svelte';
 
 	interface ModelInfo {
 		name: string;
@@ -510,8 +511,8 @@
 				<!-- Empty State -->
 				<div class="h-full flex flex-col items-center justify-center text-center">
 					<div class="mb-6 relative">
-						<MistralCat size={80} animated={true} />
-						<div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-16 h-2 bg-primary/10 rounded-full blur-sm" />
+						<MistralPixelCat size={120} animated={true} />
+						<div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-20 h-2 bg-primary/10 rounded-full blur-sm" />
 					</div>
 					<p class="text-xl font-semibold text-foreground mb-1">What can I help you secure?</p>
 					<p class="text-sm text-muted-foreground max-w-md">

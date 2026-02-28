@@ -1,7 +1,7 @@
 /* Cyber Security Prime - Mistral Edition */
 /* Retro-inspired aesthetic honoring the Mistral AI brand */
 
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Press+Start+2P&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -295,6 +295,100 @@
 		background-image:
 			radial-gradient(circle, hsl(var(--primary) / 0.03) 1px, transparent 1px);
 		background-size: 8px 8px;
+	}
+
+	/* Pixel font for retro accents */
+	.font-pixel {
+		font-family: 'Press Start 2P', monospace;
+	}
+
+	/* Pixel border (stepped corners) */
+	.pixel-border {
+		clip-path: polygon(
+			0 4px, 4px 4px, 4px 0,
+			calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+			100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+			calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)
+		);
+	}
+
+	/* Pixel card with stepped border + glow */
+	.pixel-card {
+		@apply relative bg-card/80 backdrop-blur-xl;
+		clip-path: polygon(
+			0 6px, 6px 6px, 6px 0,
+			calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px,
+			100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px),
+			calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px)
+		);
+	}
+
+	.pixel-card::before {
+		content: '';
+		position: absolute;
+		inset: -1px;
+		background: linear-gradient(135deg, #E10500, #FA5010, #FF8205, #FFB000, #FFD800);
+		clip-path: polygon(
+			0 6px, 6px 6px, 6px 0,
+			calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px,
+			100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px),
+			calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px)
+		);
+		z-index: -1;
+		opacity: 0.3;
+		transition: opacity 0.3s ease;
+	}
+
+	.pixel-card:hover::before {
+		opacity: 0.7;
+	}
+
+	/* CRT scanline overlay for retro screens */
+	.crt-overlay {
+		position: relative;
+	}
+
+	.crt-overlay::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background: repeating-linear-gradient(
+			0deg,
+			rgba(0, 0, 0, 0.05) 0px,
+			rgba(0, 0, 0, 0.05) 1px,
+			transparent 1px,
+			transparent 3px
+		);
+		z-index: 1;
+	}
+
+	/* Pixel-art style divider */
+	.pixel-divider {
+		height: 4px;
+		background: repeating-linear-gradient(
+			90deg,
+			#E10500 0px, #E10500 4px,
+			#FA5010 4px, #FA5010 8px,
+			#FF8205 8px, #FF8205 12px,
+			#FFB000 12px, #FFB000 16px,
+			#FFD800 16px, #FFD800 20px,
+			transparent 20px, transparent 24px
+		);
+		image-rendering: pixelated;
+	}
+
+	/* Pixel badge */
+	.pixel-badge {
+		@apply inline-flex items-center px-3 py-1 text-xs font-bold tracking-wider uppercase;
+		font-family: 'Press Start 2P', monospace;
+		font-size: 7px;
+		clip-path: polygon(
+			0 3px, 3px 3px, 3px 0,
+			calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px,
+			100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px),
+			calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px)
+		);
 	}
 
 	/* Mistral hackathon banner */

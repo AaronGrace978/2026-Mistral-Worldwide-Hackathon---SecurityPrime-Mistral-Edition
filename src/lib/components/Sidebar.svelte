@@ -8,6 +8,7 @@
 	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 	import MistralLogo from '$lib/components/MistralLogo.svelte';
 	import MistralCat from '$lib/components/MistralCat.svelte';
+	import MistralPixelCat from '$lib/components/MistralPixelCat.svelte';
 
 	export let collapsed = false;
 
@@ -119,16 +120,18 @@
 	<!-- Cat + Settings Footer -->
 	<div class="p-2 border-t border-border/50 space-y-1">
 		{#if !collapsed}
-			<!-- Le Chat mascot -->
 			<div class="flex items-center justify-center py-2 mb-1">
-				<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/10">
-					<MistralCat size={20} animated={true} />
-					<span class="text-[10px] text-muted-foreground font-medium">Powered by Le Chat</span>
+				<div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
+					<MistralPixelCat size={40} animated={true} />
+					<div class="flex flex-col">
+						<span class="text-[10px] text-muted-foreground font-medium">Powered by</span>
+						<span class="text-[11px] font-bold text-mistral-gradient">Le Chat</span>
+					</div>
 				</div>
 			</div>
 		{:else}
 			<div class="flex justify-center py-2">
-				<MistralCat size={20} animated={true} />
+				<MistralPixelCat size={32} animated={true} />
 			</div>
 		{/if}
 

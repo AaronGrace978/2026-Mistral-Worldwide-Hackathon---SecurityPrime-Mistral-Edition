@@ -1,4 +1,8 @@
-# SecurityPrime
+<p align="center">
+  <img src="banner.png" alt="SecurityPrime - Mistral Edition" width="100%" />
+</p>
+
+# SecurityPrime — Mistral Edition
 
 **AI-native desktop cybersecurity suite powered by Mistral models.**
 

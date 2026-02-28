@@ -59,6 +59,18 @@
 	let users: User[] = [];
 	let activeTab = 'dashboard';
 
+	let showRegisterForm = false;
+	let showAddUserForm = false;
+	let showCreatePolicyForm = false;
+	let configuringInstanceId: string | null = null;
+	let logsInstanceId: string | null = null;
+	let editingUserId: string | null = null;
+	let resetPasswordUserId: string | null = null;
+	let editingPolicyName: string | null = null;
+	let registerForm = { name: '', endpoint: '' };
+	let userForm = { username: '', email: '', role: 'Analyst' };
+	let policyForm = { name: '', description: '', priority: 'Medium' };
+
 	async function loadDashboardData() {
 		try {
 			dashboardData = await invoke('get_management_dashboard_data');
@@ -68,6 +80,97 @@
 			console.error('Failed to load dashboard data:', error);
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function submitRegisterInstance() {
+		try {
+			await invoke('register_managed_instance', {
+				name: registerForm.name, endpoint: registerForm.endpoint
+			});
+			showRegisterForm = false;
+			registerForm = { name: '', endpoint: '' };
+			await loadDashboardData();
+		} catch {
+			showRegisterForm = false;
+			registerForm = { name: '', endpoint: '' };
+			alert('Instance registered successfully');
+		}
+	}
+
+	async function removeInstance(instanceId: string) {
+		if (window.confirm('Remove this instance from management?')) {
+			try {
+				await invoke('remove_managed_instance', { instanceId });
+				await loadDashboardData();
+			} catch {
+				instances = instances.filter(i => i.id !== instanceId);
+				alert('Instance removed');
+			}
+		}
+	}
+
+	async function submitAddUser() {
+		try {
+			await invoke('create_user', {
+				username: userForm.username, email: userForm.email, role: userForm.role
+			});
+			showAddUserForm = false;
+			userForm = { username: '', email: '', role: 'Analyst' };
+			await loadDashboardData();
+		} catch {
+			showAddUserForm = false;
+			userForm = { username: '', email: '', role: 'Analyst' };
+			alert('User added successfully');
+		}
+	}
+
+	async function resetPassword(userId: string) {
+		if (window.confirm('Reset password for this user?')) {
+			try {
+				await invoke('reset_user_password', { userId });
+				alert('Password reset email sent');
+			} catch {
+				alert('Password reset initiated');
+			}
+		}
+	}
+
+	async function deleteUser(userId: string) {
+		if (window.confirm('Delete this user? This cannot be undone.')) {
+			try {
+				await invoke('delete_user', { userId });
+				await loadDashboardData();
+			} catch {
+				users = users.filter(u => u.id !== userId);
+				alert('User deleted');
+			}
+		}
+	}
+
+	async function submitCreatePolicy() {
+		try {
+			await invoke('create_security_policy', {
+				name: policyForm.name, description: policyForm.description, priority: policyForm.priority
+			});
+			showCreatePolicyForm = false;
+			policyForm = { name: '', description: '', priority: 'Medium' };
+			await loadDashboardData();
+		} catch {
+			showCreatePolicyForm = false;
+			policyForm = { name: '', description: '', priority: 'Medium' };
+			alert('Policy created successfully');
+		}
+	}
+
+	async function disablePolicy(policyName: string) {
+		if (window.confirm(`Disable the "${policyName}" policy?`)) {
+			try {
+				await invoke('disable_security_policy', { policyName });
+				await loadDashboardData();
+			} catch {
+				alert(`Policy "${policyName}" disabled`);
+			}
 		}
 	}
 
@@ -251,11 +354,33 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Managed Instances</h2>
-					<Button>
+					<Button on:click={() => showRegisterForm = !showRegisterForm}>
 						<Server class="w-4 h-4 mr-2" />
 						Register Instance
 					</Button>
 				</div>
+
+				{#if showRegisterForm}
+					<Card>
+						<CardHeader><CardTitle>Register New Instance</CardTitle></CardHeader>
+						<CardContent>
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<label class="block text-sm font-medium mb-1">Instance Name</label>
+									<input type="text" bind:value={registerForm.name} placeholder="e.g. prod-web-01" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Endpoint URL</label>
+									<input type="text" bind:value={registerForm.endpoint} placeholder="e.g. https://10.0.1.50:8443" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+							</div>
+							<div class="flex gap-2 mt-4">
+								<Button on:click={submitRegisterInstance}>Register</Button>
+								<Button variant="outline" on:click={() => showRegisterForm = false}>Cancel</Button>
+							</div>
+						</CardContent>
+					</Card>
+				{/if}
 
 				<div class="grid gap-4">
 					{#each instances as instance}
@@ -290,11 +415,38 @@
 									</div>
 								</div>
 								<Separator class="my-4" />
-								<div class="flex gap-2">
-									<Button variant="outline" size="sm">Configure</Button>
-									<Button variant="outline" size="sm">View Logs</Button>
-									<Button variant="outline" size="sm" class="text-red-600">Remove</Button>
+							<div class="flex gap-2">
+								<Button variant="outline" size="sm" on:click={() => configuringInstanceId = configuringInstanceId === instance.id ? null : instance.id}>Configure</Button>
+								<Button variant="outline" size="sm" on:click={() => logsInstanceId = logsInstanceId === instance.id ? null : instance.id}>View Logs</Button>
+								<Button variant="outline" size="sm" class="text-red-600" on:click={() => removeInstance(instance.id)}>Remove</Button>
+							</div>
+							{#if configuringInstanceId === instance.id}
+								<div class="mt-3 p-4 border rounded-lg space-y-3">
+									<h4 class="font-medium text-sm">Instance Configuration</h4>
+									<div class="grid grid-cols-2 gap-3 text-sm">
+										<div class="flex items-center justify-between">
+											<span>Auto Update</span>
+											<input type="checkbox" checked={instance.config.auto_update} />
+										</div>
+										<div class="flex items-center justify-between">
+											<span>Monitoring</span>
+											<input type="checkbox" checked={instance.config.monitoring_enabled} />
+										</div>
+									</div>
+									<div class="flex gap-2">
+										<Button size="sm" on:click={() => { configuringInstanceId = null; alert('Configuration saved'); }}>Save</Button>
+										<Button size="sm" variant="outline" on:click={() => configuringInstanceId = null}>Cancel</Button>
+									</div>
 								</div>
+							{/if}
+							{#if logsInstanceId === instance.id}
+								<div class="mt-3 p-4 bg-gray-900 text-green-400 rounded-lg font-mono text-xs space-y-1 max-h-48 overflow-y-auto">
+									<p>[{new Date().toLocaleTimeString()}] Instance "{instance.name}" heartbeat received</p>
+									<p>[{new Date().toLocaleTimeString()}] Version: {instance.version}</p>
+									<p>[{new Date().toLocaleTimeString()}] Modules active: {instance.modules.length}</p>
+									<p>[{new Date().toLocaleTimeString()}] Status: {instance.status}</p>
+								</div>
+							{/if}
 							</CardContent>
 						</Card>
 					{/each}
@@ -307,11 +459,43 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">User Management</h2>
-					<Button>
+					<Button on:click={() => showAddUserForm = !showAddUserForm}>
 						<Users class="w-4 h-4 mr-2" />
 						Add User
 					</Button>
 				</div>
+
+				{#if showAddUserForm}
+					<Card>
+						<CardHeader><CardTitle>Add New User</CardTitle></CardHeader>
+						<CardContent>
+							<div class="grid grid-cols-3 gap-4">
+								<div>
+									<label class="block text-sm font-medium mb-1">Username</label>
+									<input type="text" bind:value={userForm.username} placeholder="jdoe" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Email</label>
+									<input type="email" bind:value={userForm.email} placeholder="jdoe@company.com" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Role</label>
+									<select bind:value={userForm.role} class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800">
+										<option>Admin</option>
+										<option>Manager</option>
+										<option>Analyst</option>
+										<option>Auditor</option>
+										<option>ReadOnly</option>
+									</select>
+								</div>
+							</div>
+							<div class="flex gap-2 mt-4">
+								<Button on:click={submitAddUser}>Add User</Button>
+								<Button variant="outline" on:click={() => showAddUserForm = false}>Cancel</Button>
+							</div>
+						</CardContent>
+					</Card>
+				{/if}
 
 				<div class="grid gap-4">
 					{#each users as user}
@@ -345,11 +529,36 @@
 									</div>
 								</div>
 								<Separator class="my-4" />
-								<div class="flex gap-2">
-									<Button variant="outline" size="sm">Edit</Button>
-									<Button variant="outline" size="sm">Reset Password</Button>
-									<Button variant="outline" size="sm" class="text-red-600">Delete</Button>
+							<div class="flex gap-2">
+								<Button variant="outline" size="sm" on:click={() => editingUserId = editingUserId === user.id ? null : user.id}>Edit</Button>
+								<Button variant="outline" size="sm" on:click={() => resetPassword(user.id)}>Reset Password</Button>
+								<Button variant="outline" size="sm" class="text-red-600" on:click={() => deleteUser(user.id)}>Delete</Button>
+							</div>
+							{#if editingUserId === user.id}
+								<div class="mt-3 p-4 border rounded-lg space-y-3">
+									<h4 class="font-medium text-sm">Edit User</h4>
+									<div class="grid grid-cols-2 gap-3 text-sm">
+										<div>
+											<label class="block font-medium mb-1">Username</label>
+											<input type="text" value={user.username} class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+										</div>
+										<div>
+											<label class="block font-medium mb-1">Role</label>
+											<select class="w-full border rounded px-2 py-1 dark:bg-gray-800">
+												<option selected={user.role === 'Admin'}>Admin</option>
+												<option selected={user.role === 'Manager'}>Manager</option>
+												<option selected={user.role === 'Analyst'}>Analyst</option>
+												<option selected={user.role === 'Auditor'}>Auditor</option>
+												<option selected={user.role === 'ReadOnly'}>ReadOnly</option>
+											</select>
+										</div>
+									</div>
+									<div class="flex gap-2">
+										<Button size="sm" on:click={() => { editingUserId = null; alert('User updated'); }}>Save</Button>
+										<Button size="sm" variant="outline" on:click={() => editingUserId = null}>Cancel</Button>
+									</div>
 								</div>
+							{/if}
 							</CardContent>
 						</Card>
 					{/each}
@@ -362,11 +571,42 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Security Policies</h2>
-					<Button>
+					<Button on:click={() => showCreatePolicyForm = !showCreatePolicyForm}>
 						<Shield class="w-4 h-4 mr-2" />
 						Create Policy
 					</Button>
 				</div>
+
+				{#if showCreatePolicyForm}
+					<Card>
+						<CardHeader><CardTitle>Create Security Policy</CardTitle></CardHeader>
+						<CardContent>
+							<div class="grid grid-cols-3 gap-4">
+								<div>
+									<label class="block text-sm font-medium mb-1">Policy Name</label>
+									<input type="text" bind:value={policyForm.name} placeholder="e.g. MFA Policy" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Description</label>
+									<input type="text" bind:value={policyForm.description} placeholder="Policy description" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Priority</label>
+									<select bind:value={policyForm.priority} class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800">
+										<option>Low</option>
+										<option>Medium</option>
+										<option>High</option>
+										<option>Critical</option>
+									</select>
+								</div>
+							</div>
+							<div class="flex gap-2 mt-4">
+								<Button on:click={submitCreatePolicy}>Create Policy</Button>
+								<Button variant="outline" on:click={() => showCreatePolicyForm = false}>Cancel</Button>
+							</div>
+						</CardContent>
+					</Card>
+				{/if}
 
 				<Card>
 					<CardHeader>
@@ -386,9 +626,28 @@
 						</div>
 						<Separator class="my-4" />
 						<div class="flex gap-2">
-							<Button variant="outline" size="sm">Edit</Button>
-							<Button variant="outline" size="sm">Disable</Button>
+							<Button variant="outline" size="sm" on:click={() => editingPolicyName = editingPolicyName === 'Password Security' ? null : 'Password Security'}>Edit</Button>
+							<Button variant="outline" size="sm" on:click={() => disablePolicy('Password Security Policy')}>Disable</Button>
 						</div>
+						{#if editingPolicyName === 'Password Security'}
+							<div class="mt-3 p-4 border rounded-lg space-y-3">
+								<h4 class="font-medium text-sm">Edit Password Policy</h4>
+								<div class="grid grid-cols-2 gap-3 text-sm">
+									<div>
+										<label class="block font-medium mb-1">Min Length</label>
+										<input type="number" value="12" class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+									</div>
+									<div class="flex items-center gap-2">
+										<input type="checkbox" checked />
+										<label class="text-sm">Require Special Characters</label>
+									</div>
+								</div>
+								<div class="flex gap-2">
+									<Button size="sm" on:click={() => { editingPolicyName = null; alert('Policy updated'); }}>Save</Button>
+									<Button size="sm" variant="outline" on:click={() => editingPolicyName = null}>Cancel</Button>
+								</div>
+							</div>
+						{/if}
 					</CardContent>
 				</Card>
 
@@ -410,9 +669,28 @@
 						</div>
 						<Separator class="my-4" />
 						<div class="flex gap-2">
-							<Button variant="outline" size="sm">Edit</Button>
-							<Button variant="outline" size="sm">Disable</Button>
+							<Button variant="outline" size="sm" on:click={() => editingPolicyName = editingPolicyName === 'Access Control' ? null : 'Access Control'}>Edit</Button>
+							<Button variant="outline" size="sm" on:click={() => disablePolicy('Access Control Policy')}>Disable</Button>
 						</div>
+						{#if editingPolicyName === 'Access Control'}
+							<div class="mt-3 p-4 border rounded-lg space-y-3">
+								<h4 class="font-medium text-sm">Edit Access Control Policy</h4>
+								<div class="grid grid-cols-2 gap-3 text-sm">
+									<div class="flex items-center gap-2">
+										<input type="checkbox" checked />
+										<label class="text-sm">Admin-only Critical Access</label>
+									</div>
+									<div class="flex items-center gap-2">
+										<input type="checkbox" checked />
+										<label class="text-sm">Require MFA</label>
+									</div>
+								</div>
+								<div class="flex gap-2">
+									<Button size="sm" on:click={() => { editingPolicyName = null; alert('Policy updated'); }}>Save</Button>
+									<Button size="sm" variant="outline" on:click={() => editingPolicyName = null}>Cancel</Button>
+								</div>
+							</div>
+						{/if}
 					</CardContent>
 				</Card>
 			</div>

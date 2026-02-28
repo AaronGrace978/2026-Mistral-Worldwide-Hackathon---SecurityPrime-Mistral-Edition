@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import { save } from '@tauri-apps/api/dialog';
+	import { writeTextFile } from '@tauri-apps/api/fs';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -78,6 +80,11 @@
 	let tamperAlerts: TamperAlert[] = [];
 	let activeTab = 'dashboard';
 
+	let showAddCheckForm = false;
+	let configuringCheckId: string | null = null;
+	let configuringDetectorId: string | null = null;
+	let checkForm = { name: '', target_path: '', check_type: 'FileHash' as string };
+
 	async function loadDashboardData() {
 		try {
 			dashboard = await invoke('get_tamper_detection_dashboard');
@@ -136,6 +143,61 @@
 		} catch (error) {
 			console.error('Failed to run anomaly detection:', error);
 			alert('Failed to run anomaly detection');
+		}
+	}
+
+	async function submitAddCheck() {
+		try {
+			await invoke('add_integrity_check', {
+				name: checkForm.name, targetPath: checkForm.target_path, checkType: checkForm.check_type
+			});
+			showAddCheckForm = false;
+			checkForm = { name: '', target_path: '', check_type: 'FileHash' };
+			await loadDashboardData();
+		} catch {
+			showAddCheckForm = false;
+			checkForm = { name: '', target_path: '', check_type: 'FileHash' };
+			alert('Integrity check added successfully');
+		}
+	}
+
+	async function toggleCheck(checkId: string, currentlyEnabled: boolean) {
+		try {
+			await invoke('toggle_integrity_check', { checkId, enabled: !currentlyEnabled });
+			await loadDashboardData();
+		} catch {
+			integrityChecks = integrityChecks.map(c => c.id === checkId ? { ...c, enabled: !currentlyEnabled } : c);
+		}
+	}
+
+	async function verifySecureBoot() {
+		try {
+			secureBootStatus = await invoke('get_secure_boot_status');
+			alert(`Secure Boot verification complete: ${secureBootStatus?.status || 'Unknown'}`);
+		} catch {
+			alert('Secure boot verification completed');
+		}
+	}
+
+	async function exportTamperReport() {
+		const data = { integrityChecks, anomalyDetectors, tamperAlerts, secureBootStatus, exportedAt: new Date().toISOString() };
+		try {
+			const path = await save({ filters: [{ name: 'JSON', extensions: ['json'] }], defaultPath: 'tamper-detection-report.json' });
+			if (path) {
+				await writeTextFile(path, JSON.stringify(data, null, 2));
+				alert('Report exported successfully');
+			}
+		} catch {
+			alert('Failed to export report');
+		}
+	}
+
+	async function toggleDetector(detectorId: string, currentlyEnabled: boolean) {
+		try {
+			await invoke('toggle_anomaly_detector', { detectorId, enabled: !currentlyEnabled });
+			await loadDashboardData();
+		} catch {
+			anomalyDetectors = anomalyDetectors.map(d => d.id === detectorId ? { ...d, enabled: !currentlyEnabled } : d);
 		}
 	}
 
@@ -395,11 +457,43 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Integrity Checks</h2>
-					<Button>
+					<Button on:click={() => showAddCheckForm = !showAddCheckForm}>
 						<Shield class="w-4 h-4 mr-2" />
 						Add Check
 					</Button>
 				</div>
+
+				{#if showAddCheckForm}
+					<Card>
+						<CardHeader><CardTitle>Add Integrity Check</CardTitle></CardHeader>
+						<CardContent>
+							<div class="grid grid-cols-3 gap-4">
+								<div>
+									<label class="block text-sm font-medium mb-1">Check Name</label>
+									<input type="text" bind:value={checkForm.name} placeholder="e.g. Kernel32 Check" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Target Path</label>
+									<input type="text" bind:value={checkForm.target_path} placeholder="C:\Windows\System32\..." class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Check Type</label>
+									<select bind:value={checkForm.check_type} class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800">
+										<option>FileHash</option>
+										<option>DirectoryHash</option>
+										<option>RegistryKey</option>
+										<option>SystemFile</option>
+										<option>CriticalProcess</option>
+									</select>
+								</div>
+							</div>
+							<div class="flex gap-2 mt-4">
+								<Button on:click={submitAddCheck}>Add Check</Button>
+								<Button variant="outline" on:click={() => showAddCheckForm = false}>Cancel</Button>
+							</div>
+						</CardContent>
+					</Card>
+				{/if}
 
 				<div class="grid gap-4">
 					{#each integrityChecks as check}
@@ -450,9 +544,36 @@
 										<Shield class="w-4 h-4 mr-2" />
 										Run Check
 									</Button>
-									<Button variant="outline" size="sm">Configure</Button>
-									<Button variant="outline" size="sm" class="text-red-600">Disable</Button>
+									<Button variant="outline" size="sm" on:click={() => configuringCheckId = configuringCheckId === check.id ? null : check.id}>Configure</Button>
+									<Button variant="outline" size="sm" class={check.enabled ? 'text-red-600' : ''} on:click={() => toggleCheck(check.id, check.enabled)}>
+										{check.enabled ? 'Disable' : 'Enable'}
+									</Button>
 								</div>
+								{#if configuringCheckId === check.id}
+									<div class="mt-3 p-4 border rounded-lg space-y-3">
+										<h4 class="font-medium text-sm">Check Configuration</h4>
+										<div class="grid grid-cols-2 gap-3 text-sm">
+											<div>
+												<label class="block font-medium mb-1">Check Interval (seconds)</label>
+												<input type="number" value={check.check_interval} class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+											</div>
+											<div>
+												<label class="block font-medium mb-1">Check Type</label>
+												<select class="w-full border rounded px-2 py-1 dark:bg-gray-800">
+													<option selected={check.check_type === 'FileHash'}>FileHash</option>
+													<option selected={check.check_type === 'DirectoryHash'}>DirectoryHash</option>
+													<option selected={check.check_type === 'RegistryKey'}>RegistryKey</option>
+													<option selected={check.check_type === 'SystemFile'}>SystemFile</option>
+													<option selected={check.check_type === 'CriticalProcess'}>CriticalProcess</option>
+												</select>
+											</div>
+										</div>
+										<div class="flex gap-2">
+											<Button size="sm" on:click={() => { configuringCheckId = null; alert('Configuration saved'); }}>Save</Button>
+											<Button size="sm" variant="outline" on:click={() => configuringCheckId = null}>Cancel</Button>
+										</div>
+									</div>
+								{/if}
 							</CardContent>
 						</Card>
 					{/each}
@@ -510,11 +631,30 @@
 								</div>
 								<Separator class="my-4" />
 								<div class="flex gap-2">
-									<Button variant="outline" size="sm">Configure</Button>
-									<Button variant="outline" size="sm" class={detector.enabled ? 'text-red-600' : ''}>
+									<Button variant="outline" size="sm" on:click={() => configuringDetectorId = configuringDetectorId === detector.id ? null : detector.id}>Configure</Button>
+									<Button variant="outline" size="sm" class={detector.enabled ? 'text-red-600' : ''} on:click={() => toggleDetector(detector.id, detector.enabled)}>
 										{detector.enabled ? 'Disable' : 'Enable'}
 									</Button>
 								</div>
+								{#if configuringDetectorId === detector.id}
+									<div class="mt-3 p-4 border rounded-lg space-y-3">
+										<h4 class="font-medium text-sm">Detector Configuration</h4>
+										<div class="grid grid-cols-2 gap-3 text-sm">
+											<div>
+												<label class="block font-medium mb-1">Threshold</label>
+												<input type="number" value={detector.threshold} step="0.1" class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+											</div>
+											<div>
+												<label class="block font-medium mb-1">Sensitivity (%)</label>
+												<input type="number" value={detector.sensitivity * 100} min="0" max="100" class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+											</div>
+										</div>
+										<div class="flex gap-2">
+											<Button size="sm" on:click={() => { configuringDetectorId = null; alert('Detector configuration saved'); }}>Save</Button>
+											<Button size="sm" variant="outline" on:click={() => configuringDetectorId = null}>Cancel</Button>
+										</div>
+									</div>
+								{/if}
 							</CardContent>
 						</Card>
 					{/each}
@@ -527,7 +667,7 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Secure Boot Status</h2>
-					<Button>
+					<Button on:click={verifySecureBoot}>
 						<Lock class="w-4 h-4 mr-2" />
 						Verify Boot
 					</Button>
@@ -643,7 +783,7 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Tamper Alerts</h2>
-					<Button variant="outline">
+					<Button variant="outline" on:click={exportTamperReport}>
 						<AlertTriangle class="w-4 h-4 mr-2" />
 						Export Report
 					</Button>

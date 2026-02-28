@@ -3,6 +3,13 @@
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::process::Command;
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutonomousResponsePlaybook {
@@ -85,7 +92,7 @@ fn default_playbooks() -> Vec<AutonomousResponsePlaybook> {
                 "snapshot-memory".to_string(),
                 "notify-operator".to_string(),
             ],
-            last_executed: Some((Utc::now() - chrono::Duration::minutes(36)).to_rfc3339()),
+            last_executed: None,
         },
         AutonomousResponsePlaybook {
             id: "pb-ip-block-quarantine".to_string(),
@@ -100,7 +107,7 @@ fn default_playbooks() -> Vec<AutonomousResponsePlaybook> {
                 "revoke-persistence".to_string(),
                 "open-incident".to_string(),
             ],
-            last_executed: Some((Utc::now() - chrono::Duration::hours(3)).to_rfc3339()),
+            last_executed: None,
         },
         AutonomousResponsePlaybook {
             id: "pb-startup-hardening".to_string(),
@@ -120,37 +127,94 @@ fn default_playbooks() -> Vec<AutonomousResponsePlaybook> {
 }
 
 fn default_attack_surface() -> AttackSurfaceSnapshot {
-    let items = vec![
-        ExposureItem {
-            id: "exp-001".to_string(),
-            category: "open_port".to_string(),
-            asset: "0.0.0.0:3389".to_string(),
-            severity: "critical".to_string(),
-            status: "open".to_string(),
-            recommended_action: "Restrict RDP to trusted network ranges.".to_string(),
-        },
-        ExposureItem {
-            id: "exp-002".to_string(),
-            category: "service".to_string(),
-            asset: "SMBv1".to_string(),
-            severity: "high".to_string(),
-            status: "enabled".to_string(),
-            recommended_action: "Disable SMBv1 and enforce modern SMB configuration.".to_string(),
-        },
-        ExposureItem {
-            id: "exp-003".to_string(),
-            category: "vulnerability".to_string(),
-            asset: "Outdated PDF Reader".to_string(),
-            severity: "medium".to_string(),
-            status: "pending_patch".to_string(),
-            recommended_action: "Apply vendor patch and rescan.".to_string(),
-        },
+    let mut items = Vec::new();
+
+    let risky_ports: &[(u16, &str, &str, &str)] = &[
+        (3389, "RDP", "critical", "Restrict RDP access to trusted networks or use a VPN."),
+        (445, "SMB", "high", "Ensure SMB is properly secured and remove unnecessary shares."),
+        (135, "RPC Endpoint Mapper", "high", "Restrict RPC endpoint mapper to trusted networks."),
+        (23, "Telnet", "critical", "Disable Telnet and use SSH instead."),
+        (21, "FTP", "critical", "Disable FTP and use SFTP/SCP instead."),
+        (1433, "MSSQL", "medium", "Restrict SQL Server access to application servers only."),
+        (3306, "MySQL", "medium", "Restrict MySQL access to application servers only."),
+        (5432, "PostgreSQL", "medium", "Restrict PostgreSQL access to application servers only."),
+        (5900, "VNC", "high", "Disable VNC or restrict to trusted networks with strong auth."),
+        (8080, "HTTP Proxy", "medium", "Review HTTP proxy exposure and restrict access."),
     ];
 
+    #[cfg(target_os = "windows")]
+    {
+        let mut cmd = Command::new("netstat");
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        if let Ok(output) = cmd.args(["-an"]).output() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                let line = line.trim();
+                if !line.contains("LISTENING") {
+                    continue;
+                }
+                if let Some(addr) = line.split_whitespace().nth(1) {
+                    if let Some(port_str) = addr.rsplit(':').next() {
+                        if let Ok(port) = port_str.parse::<u16>() {
+                            if let Some((_, service, severity, action)) =
+                                risky_ports.iter().find(|(p, _, _, _)| *p == port)
+                            {
+                                items.push(ExposureItem {
+                                    id: format!("exp-port-{}", port),
+                                    category: "open_port".to_string(),
+                                    asset: format!("0.0.0.0:{} ({})", port, service),
+                                    severity: severity.to_string(),
+                                    status: "open".to_string(),
+                                    recommended_action: action.to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(output) = Command::new("ss").args(["-tuln"]).output() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines().skip(1) {
+                if let Some(addr) = line.split_whitespace().nth(4) {
+                    if let Some(port_str) = addr.rsplit(':').next() {
+                        if let Ok(port) = port_str.parse::<u16>() {
+                            if let Some((_, service, severity, action)) =
+                                risky_ports.iter().find(|(p, _, _, _)| *p == port)
+                            {
+                                items.push(ExposureItem {
+                                    id: format!("exp-port-{}", port),
+                                    category: "open_port".to_string(),
+                                    asset: format!("*:{} ({})", port, service),
+                                    severity: severity.to_string(),
+                                    status: "open".to_string(),
+                                    recommended_action: action.to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let critical_count = items.iter().filter(|i| i.severity == "critical").count() as u32;
+    let high_count = items.iter().filter(|i| i.severity == "high").count() as u32;
+    let open_count = items.len() as u32;
+
+    let exposure_score: u8 = std::cmp::min(
+        100,
+        10 + (critical_count * 20 + high_count * 10 + open_count * 5) as u8,
+    );
+
     AttackSurfaceSnapshot {
-        overall_exposure_score: 61,
-        open_exposures: items.len() as u32,
-        critical_exposures: items.iter().filter(|i| i.severity == "critical").count() as u32,
+        overall_exposure_score: exposure_score,
+        open_exposures: open_count,
+        critical_exposures: critical_count,
         last_updated: Utc::now().to_rfc3339(),
         items,
     }

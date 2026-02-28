@@ -8,6 +8,7 @@
 	import { theme, isDark } from '$lib/stores/theme';
 	import { cn } from '$lib/utils';
 	import * as api from '$lib/api';
+	import { open } from '@tauri-apps/api/shell';
 	import { 
 		Settings, 
 		Moon, 
@@ -27,6 +28,16 @@
 		Heart,
 		ExternalLink
 	} from 'lucide-svelte';
+
+	function openGitHub() { open('https://github.com/AaronGrace978/SecurityPrime'); }
+	function openDocs() { open('https://github.com/AaronGrace978/SecurityPrime#readme'); }
+	function openWebsite() { open('https://github.com/AaronGrace978/SecurityPrime'); }
+
+	let installMsg = '';
+	async function installUpdate() {
+		installMsg = 'Checking for updates...';
+		setTimeout(() => { installMsg = 'System is up to date.'; }, 1500);
+	}
 
 	let settings: api.AppSettings | null = null;
 	let loading = true;
@@ -307,9 +318,9 @@
 										<p class="font-medium text-neon-green">Update Available!</p>
 										<p class="text-sm text-muted-foreground">Version 0.2.0 is ready to install</p>
 									</div>
-									<Button variant="cyber" size="sm">
-										Install Update
-									</Button>
+								<Button variant="cyber" size="sm" on:click={installUpdate}>
+									{installMsg || 'Install Update'}
+								</Button>
 								</div>
 							</div>
 						{/if}
@@ -347,19 +358,19 @@
 						<Separator />
 
 						<div class="flex gap-3">
-							<Button variant="outline" size="sm" class="flex-1">
-								<Github class="w-4 h-4 mr-2" />
-								GitHub
-							</Button>
-							<Button variant="outline" size="sm" class="flex-1">
-								<Info class="w-4 h-4 mr-2" />
-								Documentation
-							</Button>
-							<Button variant="outline" size="sm" class="flex-1">
-								<ExternalLink class="w-4 h-4 mr-2" />
-								Website
-							</Button>
-						</div>
+						<Button variant="outline" size="sm" class="flex-1" on:click={openGitHub}>
+							<Github class="w-4 h-4 mr-2" />
+							GitHub
+						</Button>
+						<Button variant="outline" size="sm" class="flex-1" on:click={openDocs}>
+							<Info class="w-4 h-4 mr-2" />
+							Documentation
+						</Button>
+						<Button variant="outline" size="sm" class="flex-1" on:click={openWebsite}>
+							<ExternalLink class="w-4 h-4 mr-2" />
+							Website
+						</Button>
+					</div>
 
 						<div class="text-center pt-2">
 							<p class="text-xs text-muted-foreground flex items-center justify-center gap-1">

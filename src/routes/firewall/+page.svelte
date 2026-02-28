@@ -156,12 +156,37 @@
 				const merge = confirm('Merge with existing rules? Click Cancel to replace all rules.');
 				const result = await api.importFirewallRules(filePath, merge);
 				alert(result.message);
-				// Reload rules
 				firewallRules = await api.getFirewallRules();
 			}
 		} catch (error) {
 			console.error('Failed to import rules:', error);
 			alert('Failed to import rules: ' + error);
+		}
+	}
+
+	let showAddRule = false;
+	let newRule = { name: '', direction: 'Inbound', action: 'Block', protocol: 'TCP', local_port: '', remote_address: '' };
+
+	async function addRule() {
+		if (!newRule.name) { alert('Rule name is required'); return; }
+		try {
+			await api.addFirewallRule({
+				name: newRule.name,
+				enabled: true,
+				direction: newRule.direction,
+				action: newRule.action,
+				protocol: newRule.protocol,
+				local_port: newRule.local_port || null,
+				remote_port: null,
+				remote_address: newRule.remote_address || null,
+				application: null,
+				description: `Custom rule created via SecurityPrime`
+			});
+			showAddRule = false;
+			newRule = { name: '', direction: 'Inbound', action: 'Block', protocol: 'TCP', local_port: '', remote_address: '' };
+			firewallRules = await api.getFirewallRules();
+		} catch (err) {
+			alert('Failed to add rule: ' + err);
 		}
 	}
 </script>
@@ -304,16 +329,61 @@
 										<Upload class="w-4 h-4 mr-2" />
 										Import
 									</Button>
-									<Button variant="cyber" size="sm">
-										<Plus class="w-4 h-4 mr-2" />
-										Add Rule
-									</Button>
+								<Button variant="cyber" size="sm" on:click={() => showAddRule = !showAddRule}>
+									<Plus class="w-4 h-4 mr-2" />
+									Add Rule
+								</Button>
 								{/if}
 							</div>
 						</div>
-					</CardHeader>
-					<CardContent>
-						{#if !rulesLoaded && !rulesLoading}
+				</CardHeader>
+				<CardContent>
+					{#if showAddRule}
+						<div class="mb-4 p-4 rounded-lg bg-muted/30 border border-primary/20 space-y-3">
+							<h4 class="text-sm font-semibold">New Firewall Rule</h4>
+							<div class="grid grid-cols-2 gap-3">
+								<div>
+									<label class="text-xs text-muted-foreground">Rule Name *</label>
+									<input bind:value={newRule.name} class="w-full mt-1 px-3 py-1.5 text-sm bg-background border border-border rounded-md" placeholder="Block Telnet" />
+								</div>
+								<div>
+									<label class="text-xs text-muted-foreground">Direction</label>
+									<select bind:value={newRule.direction} class="w-full mt-1 px-3 py-1.5 text-sm bg-background border border-border rounded-md">
+										<option>Inbound</option>
+										<option>Outbound</option>
+									</select>
+								</div>
+								<div>
+									<label class="text-xs text-muted-foreground">Action</label>
+									<select bind:value={newRule.action} class="w-full mt-1 px-3 py-1.5 text-sm bg-background border border-border rounded-md">
+										<option>Block</option>
+										<option>Allow</option>
+									</select>
+								</div>
+								<div>
+									<label class="text-xs text-muted-foreground">Protocol</label>
+									<select bind:value={newRule.protocol} class="w-full mt-1 px-3 py-1.5 text-sm bg-background border border-border rounded-md">
+										<option>TCP</option>
+										<option>UDP</option>
+										<option>Any</option>
+									</select>
+								</div>
+								<div>
+									<label class="text-xs text-muted-foreground">Port</label>
+									<input bind:value={newRule.local_port} class="w-full mt-1 px-3 py-1.5 text-sm bg-background border border-border rounded-md" placeholder="e.g. 23" />
+								</div>
+								<div>
+									<label class="text-xs text-muted-foreground">Remote Address</label>
+									<input bind:value={newRule.remote_address} class="w-full mt-1 px-3 py-1.5 text-sm bg-background border border-border rounded-md" placeholder="Any" />
+								</div>
+							</div>
+							<div class="flex justify-end gap-2 pt-1">
+								<Button variant="outline" size="sm" on:click={() => showAddRule = false}>Cancel</Button>
+								<Button variant="cyber" size="sm" on:click={addRule}>Create Rule</Button>
+							</div>
+						</div>
+					{/if}
+					{#if !rulesLoaded && !rulesLoading}
 							<!-- Lazy load prompt - rules can take several seconds to load -->
 							<div class="flex flex-col items-center justify-center py-12 text-center">
 								<Shield class="w-12 h-12 text-muted-foreground mb-4 opacity-50" />

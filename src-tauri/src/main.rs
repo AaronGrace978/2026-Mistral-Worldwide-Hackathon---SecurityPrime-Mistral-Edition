@@ -99,6 +99,7 @@ fn main() {
             cmd::get_scan_status,
             cmd::get_scan_results,
             cmd::stop_scan,
+            cmd::quarantine_threats,
             // Advanced Scanner commands
             cmd::scan_memory_forensics,
             cmd::analyze_behavioral_patterns,
@@ -117,6 +118,7 @@ fn main() {
             cmd::encrypt_file,
             cmd::decrypt_file,
             cmd::get_encrypted_files,
+            cmd::remove_encrypted_file,
             // Vulnerability commands
             cmd::scan_vulnerabilities,
             cmd::get_vulnerabilities,
@@ -124,6 +126,9 @@ fn main() {
             cmd::get_network_connections,
             cmd::get_network_stats,
             cmd::get_little_snitch_status,
+            cmd::get_little_snitch_rules,
+            cmd::get_little_snitch_domain_trust,
+            cmd::export_little_snitch_profile,
             // Settings commands
             cmd::get_settings,
             cmd::update_settings,

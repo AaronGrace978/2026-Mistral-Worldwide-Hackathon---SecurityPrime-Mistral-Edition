@@ -236,7 +236,7 @@
 						<div class="flex-1 min-w-0">
 							<div class="flex items-center gap-2 mb-1">
 								<h3 class="text-base font-bold">Mistral Security Copilot</h3>
-								<Badge variant="outline" class="text-[9px] border-[#FF8205]/40 text-[#FF8205] font-mono tracking-wider">LE CHAT</Badge>
+								<Badge variant="outline" class="text-[9px] border-[#FF8205]/40 text-[#FF8205] font-mono tracking-wider">LE</Badge>
 							</div>
 							<p class="text-sm text-muted-foreground">
 								Multi-model AI analysis — Mistral Large for deep reasoning, Ministral for fast triage,

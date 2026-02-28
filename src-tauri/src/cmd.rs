@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use sysinfo::{Disks, System};
+use sysinfo::{Components, Disks, Networks, System};
 use tauri::Manager;
 use tokio::time;
 
@@ -239,54 +239,61 @@ fn get_drive_health_status(total_space: u64, available_space: u64) -> String {
 }
 
 async fn get_hardware_sensors() -> HardwareSensors {
-    let mut sensors = HardwareSensors {
-        cpu_temperature: None,
-        gpu_temperature: None,
-        motherboard_temperature: None,
-        fan_speeds: Vec::new(),
-    };
+    let components = Components::new_with_refreshed_list();
 
-    // Simplified sensor detection - in production, would use platform-specific APIs
-    // For now, return mock data
-    sensors.cpu_temperature = Some(45.2);
-    sensors.gpu_temperature = Some(52.8);
-    sensors.motherboard_temperature = Some(38.5);
+    let mut cpu_temp: Option<f32> = None;
+    let mut mb_temp: Option<f32> = None;
 
-    // Try to get NVIDIA GPU info if available
+    for component in &components {
+        let label = component.label().to_lowercase();
+        if cpu_temp.is_none()
+            && (label.contains("cpu")
+                || label.contains("core")
+                || label.contains("package")
+                || label.contains("tctl"))
+        {
+            cpu_temp = Some(component.temperature());
+        } else if mb_temp.is_none()
+            && (label.contains("motherboard")
+                || label.contains("system")
+                || label.contains("board"))
+        {
+            mb_temp = Some(component.temperature());
+        }
+    }
+
+    let mut gpu_temp: Option<f32> = None;
     if let Ok(nvml) = nvml_wrapper::Nvml::init() {
         if let Ok(device) = nvml.device_by_index(0) {
             if let Ok(temp) = device.temperature(nvml_wrapper::enum_wrappers::device::TemperatureSensor::Gpu) {
-                sensors.gpu_temperature = Some(temp as f32);
+                gpu_temp = Some(temp as f32);
             }
         }
     }
 
-    sensors
+    HardwareSensors {
+        cpu_temperature: cpu_temp,
+        gpu_temperature: gpu_temp,
+        motherboard_temperature: mb_temp,
+        fan_speeds: Vec::new(),
+    }
 }
 
 async fn get_network_interfaces_stats() -> Vec<NetworkStats> {
-    // Simplified network stats - in production, would use platform-specific APIs
-    // For now, return mock data
-    vec![
-        NetworkStats {
-            interface_name: "Ethernet".to_string(),
-            bytes_sent: 1547892340,
-            bytes_received: 2894567890,
-            packets_sent: 1234567,
-            packets_received: 2345678,
-            errors_in: 0,
-            errors_out: 0,
-        },
-        NetworkStats {
-            interface_name: "Wi-Fi".to_string(),
-            bytes_sent: 456789123,
-            bytes_received: 789456123,
-            packets_sent: 345678,
-            packets_received: 567890,
-            errors_in: 2,
-            errors_out: 0,
-        },
-    ]
+    let networks = Networks::new_with_refreshed_list();
+
+    networks
+        .iter()
+        .map(|(name, data)| NetworkStats {
+            interface_name: name.to_string(),
+            bytes_sent: data.total_transmitted(),
+            bytes_received: data.total_received(),
+            packets_sent: data.total_packets_transmitted(),
+            packets_received: data.total_packets_received(),
+            errors_in: data.total_errors_on_received(),
+            errors_out: data.total_errors_on_transmitted(),
+        })
+        .collect()
 }
 
 fn get_smart_health() -> Option<SmartHealth> {
@@ -612,7 +619,18 @@ pub fn get_security_score() -> Result<SecurityScore, String> {
     let firewall_score: u32 = if state.settings.modules_enabled.firewall { 85 } else { 30 };
     let antivirus_score: u32 = if state.settings.modules_enabled.scanner { 90 } else { 40 };
     let encryption_score: u32 = if state.settings.modules_enabled.encryption { 75 } else { 50 };
-    let updates_score: u32 = 88; // Placeholder
+    let boot_time = System::boot_time();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let uptime_days = now.saturating_sub(boot_time) / 86400;
+    let updates_score: u32 = match uptime_days {
+        0..=6 => 95,
+        7..=13 => 85,
+        14..=29 => 70,
+        _ => 55,
+    };
     let vuln_score: u32 = if state.settings.modules_enabled.vulnerability { 80 } else { 60 };
     
     let total_score = ((firewall_score + antivirus_score + encryption_score + updates_score + vuln_score) / 5) as u8;
@@ -745,47 +763,6 @@ pub fn get_recent_activity(limit: Option<usize>) -> Result<Vec<ActivityEvent>, S
     let state = APP_STATE.read();
     let limit = limit.unwrap_or(10);
     
-    // Return mock data if no real activities
-    if state.activities.is_empty() {
-        return Ok(vec![
-            ActivityEvent::new(
-                ActivityType::ScanCompleted,
-                "System Scan Completed",
-                "Full system scan completed successfully. No threats detected.",
-                Severity::Low,
-                "scanner",
-            ),
-            ActivityEvent::new(
-                ActivityType::FirewallBlocked,
-                "Connection Blocked",
-                "Blocked suspicious outbound connection to 192.168.1.100:8080",
-                Severity::Medium,
-                "firewall",
-            ),
-            ActivityEvent::new(
-                ActivityType::SystemUpdate,
-                "Definitions Updated",
-                "Malware definitions updated to version 2024.01.06",
-                Severity::Low,
-                "scanner",
-            ),
-            ActivityEvent::new(
-                ActivityType::VulnerabilityFound,
-                "Vulnerability Detected",
-                "Found outdated software: Adobe Reader 2023.001",
-                Severity::Medium,
-                "vulnerability",
-            ),
-            ActivityEvent::new(
-                ActivityType::FileEncrypted,
-                "File Encrypted",
-                "Successfully encrypted: Documents/sensitive_data.pdf",
-                Severity::Low,
-                "encryption",
-            ),
-        ]);
-    }
-    
     let activities: Vec<_> = state.activities.iter().rev().take(limit).cloned().collect();
     Ok(activities)
 }
@@ -793,24 +770,6 @@ pub fn get_recent_activity(limit: Option<usize>) -> Result<Vec<ActivityEvent>, S
 #[tauri::command]
 pub fn get_threat_alerts() -> Result<Vec<ThreatAlert>, String> {
     let state = APP_STATE.read();
-    
-    // Return mock data if no real alerts
-    if state.alerts.is_empty() {
-        return Ok(vec![
-            ThreatAlert::new(
-                "Potential Malware Detected",
-                "Suspicious file behavior detected in C:\\Users\\Downloads\\setup.exe",
-                Severity::High,
-                "Real-time Scanner",
-            ),
-            ThreatAlert::new(
-                "Unusual Network Activity",
-                "Multiple connection attempts to unknown IP addresses detected",
-                Severity::Medium,
-                "Network Monitor",
-            ),
-        ]);
-    }
     
     Ok(state.alerts.clone())
 }
@@ -837,6 +796,11 @@ pub fn get_scan_results(scan_id: String) -> Result<scanner::ScanResults, String>
 #[tauri::command]
 pub fn stop_scan(scan_id: String) -> Result<bool, String> {
     scanner::stop_scan(&scan_id)
+}
+
+#[tauri::command]
+pub fn quarantine_threats(threat_ids: Vec<String>) -> Result<u32, String> {
+    scanner::quarantine_threats(threat_ids)
 }
 
 // ============================================================================
@@ -949,6 +913,11 @@ pub fn decrypt_file(file_path: String, password: String) -> Result<encryption::D
 #[tauri::command]
 pub fn get_encrypted_files() -> Result<Vec<encryption::EncryptedFile>, String> {
     encryption::get_encrypted_files()
+}
+
+#[tauri::command]
+pub fn remove_encrypted_file(file_id: String, delete_file: bool) -> Result<(), String> {
+    encryption::remove_encrypted_file(&file_id, delete_file)
 }
 
 // ============================================================================
@@ -1398,6 +1367,39 @@ pub struct LittleSnitchStatus {
     pub status_message: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LittleSnitchRule {
+    pub id: String,
+    pub action: String,        // "allow" | "deny"
+    pub direction: String,     // "outgoing" | "incoming"
+    pub process: String,       // process path or "any"
+    pub remote_host: String,   // domain or IP pattern
+    pub ports: String,         // port number, range, or "any"
+    pub protocol: String,      // "tcp" | "udp" | "any"
+    pub notes: String,
+    pub category: String,      // "ai_endpoint" | "telemetry" | "update" | "cdn" | "suspicious" | "custom"
+    pub priority: String,      // "critical" | "recommended" | "optional"
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DomainTrustEntry {
+    pub domain: String,
+    pub trust_level: String,   // "trusted" | "unknown" | "suspicious"
+    pub category: String,
+    pub first_seen: String,
+    pub connection_count: u32,
+    pub notes: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LittleSnitchRuleProfile {
+    pub name: String,
+    pub description: String,
+    pub created_at: String,
+    pub rules_json: String,
+    pub rule_count: u32,
+}
+
 #[tauri::command]
 pub fn get_little_snitch_status() -> Result<LittleSnitchStatus, String> {
     let docs_url = "https://www.obdev.at/products/littlesnitch/index.html".to_string();
@@ -1442,6 +1444,252 @@ pub fn get_little_snitch_status() -> Result<LittleSnitchStatus, String> {
             status_message: "Little Snitch integration is macOS-only.".to_string(),
         })
     }
+}
+
+/// Curated known-domain registry for trust classification
+struct DomainInfo {
+    pattern: &'static str,
+    trust: &'static str,
+    category: &'static str,
+    notes: &'static str,
+}
+
+const KNOWN_DOMAINS: &[DomainInfo] = &[
+    // AI model endpoints
+    DomainInfo { pattern: "api.openai.com",        trust: "trusted", category: "ai_endpoint",  notes: "OpenAI API" },
+    DomainInfo { pattern: "api.anthropic.com",      trust: "trusted", category: "ai_endpoint",  notes: "Anthropic Claude API" },
+    DomainInfo { pattern: "generativelanguage.googleapis.com", trust: "trusted", category: "ai_endpoint", notes: "Google Gemini API" },
+    DomainInfo { pattern: "api.mistral.ai",         trust: "trusted", category: "ai_endpoint",  notes: "Mistral API" },
+    DomainInfo { pattern: "api.groq.com",           trust: "trusted", category: "ai_endpoint",  notes: "Groq API" },
+    DomainInfo { pattern: "api.cohere.ai",          trust: "trusted", category: "ai_endpoint",  notes: "Cohere API" },
+    DomainInfo { pattern: "localhost",              trust: "trusted", category: "local",         notes: "Local Ollama / LM Studio" },
+    DomainInfo { pattern: "127.0.0.1",             trust: "trusted", category: "local",         notes: "Loopback" },
+    // OS updates
+    DomainInfo { pattern: "update.microsoft.com",   trust: "trusted", category: "update",       notes: "Windows Update" },
+    DomainInfo { pattern: "download.windowsupdate.com", trust: "trusted", category: "update",   notes: "Windows Update CDN" },
+    DomainInfo { pattern: "swscan.apple.com",       trust: "trusted", category: "update",       notes: "macOS Software Update" },
+    DomainInfo { pattern: "swdist.apple.com",       trust: "trusted", category: "update",       notes: "macOS Software Distribution" },
+    // CDNs
+    DomainInfo { pattern: "cdn.jsdelivr.net",       trust: "trusted", category: "cdn",          notes: "jsDelivr CDN" },
+    DomainInfo { pattern: "cdnjs.cloudflare.com",   trust: "trusted", category: "cdn",          notes: "Cloudflare CDN" },
+    // Telemetry to deny
+    DomainInfo { pattern: "telemetry.microsoft.com", trust: "suspicious", category: "telemetry", notes: "Microsoft Telemetry" },
+    DomainInfo { pattern: "vortex.data.microsoft.com", trust: "suspicious", category: "telemetry", notes: "Microsoft diagnostics" },
+    DomainInfo { pattern: "settings-win.data.microsoft.com", trust: "suspicious", category: "telemetry", notes: "Windows settings telemetry" },
+    DomainInfo { pattern: "watson.telemetry.microsoft.com", trust: "suspicious", category: "telemetry", notes: "Watson crash telemetry" },
+    DomainInfo { pattern: "metrics.apple.com",      trust: "suspicious", category: "telemetry",  notes: "Apple metrics" },
+    DomainInfo { pattern: "xp.apple.com",           trust: "suspicious", category: "telemetry",  notes: "Apple experience telemetry" },
+    DomainInfo { pattern: "analytics.google.com",   trust: "suspicious", category: "telemetry",  notes: "Google Analytics" },
+    DomainInfo { pattern: "firebaselogging.googleapis.com", trust: "suspicious", category: "telemetry", notes: "Firebase logging" },
+];
+
+fn classify_domain(domain: &str) -> (&'static str, &'static str, &'static str) {
+    for info in KNOWN_DOMAINS {
+        if domain == info.pattern || domain.ends_with(&format!(".{}", info.pattern)) {
+            return (info.trust, info.category, info.notes);
+        }
+    }
+    ("unknown", "uncategorized", "Not in known-domain registry")
+}
+
+#[tauri::command]
+pub fn get_little_snitch_rules() -> Result<Vec<LittleSnitchRule>, String> {
+    let mut rules = Vec::new();
+    let mut id_counter = 0u32;
+    let mut next_id = || { id_counter += 1; format!("lsr-{:03}", id_counter) };
+
+    // Critical: allow AI endpoints SecurityPrime may use
+    let ai_endpoints = [
+        ("api.openai.com", "OpenAI API — required if using GPT models"),
+        ("api.anthropic.com", "Anthropic API — required if using Claude"),
+        ("generativelanguage.googleapis.com", "Google Gemini API"),
+        ("api.mistral.ai", "Mistral AI API"),
+        ("api.groq.com", "Groq inference API"),
+        ("api.cohere.ai", "Cohere API"),
+    ];
+    for (host, note) in ai_endpoints {
+        rules.push(LittleSnitchRule {
+            id: next_id(),
+            action: "allow".into(),
+            direction: "outgoing".into(),
+            process: "any".into(),
+            remote_host: host.into(),
+            ports: "443".into(),
+            protocol: "tcp".into(),
+            notes: note.into(),
+            category: "ai_endpoint".into(),
+            priority: "critical".into(),
+        });
+    }
+
+    // Allow local model servers
+    rules.push(LittleSnitchRule {
+        id: next_id(),
+        action: "allow".into(),
+        direction: "outgoing".into(),
+        process: "any".into(),
+        remote_host: "localhost".into(),
+        ports: "11434,1234,8080".into(),
+        protocol: "tcp".into(),
+        notes: "Local model servers (Ollama 11434, LM Studio 1234, fallback 8080)".into(),
+        category: "ai_endpoint".into(),
+        priority: "critical".into(),
+    });
+
+    // Recommended: allow OS updates
+    let update_hosts = [
+        ("update.microsoft.com", "Windows Update"),
+        ("download.windowsupdate.com", "Windows Update CDN"),
+        ("swscan.apple.com", "macOS Software Update"),
+        ("swdist.apple.com", "macOS Software Distribution"),
+    ];
+    for (host, note) in update_hosts {
+        rules.push(LittleSnitchRule {
+            id: next_id(),
+            action: "allow".into(),
+            direction: "outgoing".into(),
+            process: "any".into(),
+            remote_host: host.into(),
+            ports: "443".into(),
+            protocol: "tcp".into(),
+            notes: note.into(),
+            category: "update".into(),
+            priority: "recommended".into(),
+        });
+    }
+
+    // Deny known telemetry
+    let telemetry_hosts = [
+        ("telemetry.microsoft.com", "Microsoft Telemetry"),
+        ("vortex.data.microsoft.com", "Microsoft diagnostics pipeline"),
+        ("settings-win.data.microsoft.com", "Windows settings telemetry"),
+        ("watson.telemetry.microsoft.com", "Watson crash analytics"),
+        ("metrics.apple.com", "Apple metrics collection"),
+        ("xp.apple.com", "Apple experience telemetry"),
+        ("analytics.google.com", "Google Analytics tracking"),
+        ("firebaselogging.googleapis.com", "Firebase telemetry"),
+    ];
+    for (host, note) in telemetry_hosts {
+        rules.push(LittleSnitchRule {
+            id: next_id(),
+            action: "deny".into(),
+            direction: "outgoing".into(),
+            process: "any".into(),
+            remote_host: host.into(),
+            ports: "any".into(),
+            protocol: "any".into(),
+            notes: note.into(),
+            category: "telemetry".into(),
+            priority: "recommended".into(),
+        });
+    }
+
+    // Scan live connections and add rules for unseen domains
+    if let Ok(connections) = network::get_connections() {
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for conn in &connections {
+            if conn.remote_address == "0.0.0.0" || conn.remote_address == "127.0.0.1" || conn.remote_address == "::1" {
+                continue;
+            }
+            if seen.contains(&conn.remote_address) {
+                continue;
+            }
+            seen.insert(conn.remote_address.clone());
+
+            let (trust, cat, _note) = classify_domain(&conn.remote_address);
+            if trust == "unknown" {
+                rules.push(LittleSnitchRule {
+                    id: next_id(),
+                    action: "deny".into(),
+                    direction: "outgoing".into(),
+                    process: conn.process_name.clone(),
+                    remote_host: conn.remote_address.clone(),
+                    ports: conn.remote_port.to_string(),
+                    protocol: conn.protocol.to_lowercase(),
+                    notes: format!("Unknown destination seen from {} — review before allowing", conn.process_name),
+                    category: cat.into(),
+                    priority: "optional".into(),
+                });
+            }
+        }
+    }
+
+    Ok(rules)
+}
+
+#[tauri::command]
+pub fn get_little_snitch_domain_trust() -> Result<Vec<DomainTrustEntry>, String> {
+    let connections = network::get_connections().unwrap_or_default();
+    let mut domain_map: std::collections::HashMap<String, (u32, String)> = std::collections::HashMap::new();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    for conn in &connections {
+        if conn.remote_address == "0.0.0.0" || conn.remote_address == "*" {
+            continue;
+        }
+        let entry = domain_map.entry(conn.remote_address.clone()).or_insert((0, now.clone()));
+        entry.0 += 1;
+    }
+
+    let mut entries: Vec<DomainTrustEntry> = domain_map
+        .into_iter()
+        .map(|(domain, (count, first))| {
+            let (trust, category, notes) = classify_domain(&domain);
+            DomainTrustEntry {
+                domain,
+                trust_level: trust.into(),
+                category: category.into(),
+                first_seen: first,
+                connection_count: count,
+                notes: notes.into(),
+            }
+        })
+        .collect();
+
+    entries.sort_by(|a, b| {
+        let trust_order = |t: &str| match t { "suspicious" => 0, "unknown" => 1, _ => 2 };
+        trust_order(&a.trust_level).cmp(&trust_order(&b.trust_level))
+            .then(b.connection_count.cmp(&a.connection_count))
+    });
+
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn export_little_snitch_profile() -> Result<LittleSnitchRuleProfile, String> {
+    let rules = get_little_snitch_rules()?;
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // Build Little Snitch .lsrules format
+    let ls_rules: Vec<serde_json::Value> = rules.iter().map(|r| {
+        serde_json::json!({
+            "action": if r.action == "allow" { "allow" } else { "deny" },
+            "direction": r.direction,
+            "process": r.process,
+            "remote-hosts": r.remote_host,
+            "ports": r.ports,
+            "protocol": r.protocol,
+            "notes": r.notes,
+        })
+    }).collect();
+
+    let profile = serde_json::json!({
+        "name": "SecurityPrime Recommended Rules",
+        "description": "Auto-generated rule group from Cyber Security Prime. Import into Little Snitch via File → New Rule Group From File.",
+        "denied-remote-notes": "Blocked by SecurityPrime policy",
+        "rules": ls_rules,
+    });
+
+    let rules_json = serde_json::to_string_pretty(&profile)
+        .map_err(|e| format!("Failed to serialize profile: {}", e))?;
+
+    Ok(LittleSnitchRuleProfile {
+        name: "SecurityPrime Recommended Rules".into(),
+        description: "Import this file into Little Snitch as a Rule Group to enforce SecurityPrime recommended network policies.".into(),
+        created_at: now,
+        rules_json,
+        rule_count: ls_rules.len() as u32,
+    })
 }
 
 /// Install the Windows service

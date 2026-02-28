@@ -26,6 +26,11 @@
 		AlertCircle
 	} from 'lucide-svelte';
 	import * as api from '$lib/api';
+	import { open } from '@tauri-apps/api/shell';
+
+	function browseMarketplace() {
+		open('https://github.com/AaronGrace978/SecurityPrime/discussions');
+	}
 
 	let plugins: api.Plugin[] = [];
 	let loading = true;
@@ -144,10 +149,10 @@
 			<Button variant="outline" on:click={loadPlugins} disabled={loading}>
 				<RefreshCw class="w-4 h-4 {loading ? 'animate-spin' : ''}" />
 			</Button>
-			<Button variant="cyber">
-				<Download class="w-4 h-4 mr-2" />
-				Browse Marketplace
-			</Button>
+		<Button variant="cyber" on:click={browseMarketplace}>
+			<Download class="w-4 h-4 mr-2" />
+			Browse Marketplace
+		</Button>
 		</div>
 	</div>
 

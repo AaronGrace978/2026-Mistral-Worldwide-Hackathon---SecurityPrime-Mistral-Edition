@@ -81,79 +81,57 @@
 		}
 	];
 
+	let pollInterval: ReturnType<typeof setInterval> | null = null;
+
 	async function startScan() {
 		try {
 			isScanning = true;
+			scanResults = null;
 
 			if (scanMode === 'basic') {
 				scanSession = await api.startScan(selectedScanType);
 
-				// Simulate scan progress
-				let progress = 0;
-				const interval = setInterval(async () => {
-					progress += Math.random() * 15;
-					if (progress >= 100) {
-						progress = 100;
-						clearInterval(interval);
-						// Get final results
-						if (scanSession) {
+				pollInterval = setInterval(async () => {
+					if (!scanSession) { clearPoll(); return; }
+					try {
+						scanStatus = await api.getScanStatus(scanSession.id);
+						if (scanStatus.status === 'completed' || scanStatus.status === 'stopped') {
+							clearPoll();
 							scanResults = await api.getScanResults(scanSession.id);
+							isScanning = false;
 						}
+					} catch {
+						clearPoll();
 						isScanning = false;
 					}
-
-					scanStatus = {
-						id: scanSession?.id ?? '',
-						status: progress >= 100 ? 'completed' : 'running',
-						progress,
-						current_file: progress < 100 ? 'C:\\Users\\Documents\\scanning...' : null,
-						scanned_files: Math.floor(15000 * (progress / 100)),
-						threats_found: progress > 50 ? 2 : 0,
-						estimated_time_remaining: progress < 100 ? `${Math.ceil((100 - progress) / 10)} seconds` : null
-					};
-				}, 500);
+				}, 600);
 			} else {
-				// Advanced scanning
 				advancedScanResults = null;
 
-				// Simulate advanced scan progress
-				let progress = 0;
-				const interval = setInterval(async () => {
-					progress += Math.random() * 8; // Slower for advanced scans
-					if (progress >= 100) {
-						progress = 100;
-						clearInterval(interval);
+				scanSession = await api.startScan('full');
 
-						// Get advanced scan results
-						try {
-							advancedScanResults = await api.performAdvancedScan(selectedAdvancedScanType);
+				pollInterval = setInterval(async () => {
+					if (!scanSession) { clearPoll(); return; }
+					try {
+						scanStatus = await api.getScanStatus(scanSession.id);
+						if (scanStatus.status === 'completed' || scanStatus.status === 'stopped') {
+							clearPoll();
 
-							// Extract results for display
-							if (advancedScanResults.memory_results) {
-								memoryResults = advancedScanResults.memory_results;
+							try {
+								advancedScanResults = await api.performAdvancedScan(selectedAdvancedScanType);
+								if (advancedScanResults.memory_results) memoryResults = advancedScanResults.memory_results;
+								if (advancedScanResults.behavioral_results) behavioralResults = advancedScanResults.behavioral_results;
+								if (advancedScanResults.yara_results) yaraResults = advancedScanResults.yara_results;
+							} catch (error) {
+								console.error('Failed to get advanced scan results:', error);
 							}
-							if (advancedScanResults.behavioral_results) {
-								behavioralResults = advancedScanResults.behavioral_results;
-							}
-							if (advancedScanResults.yara_results) {
-								yaraResults = advancedScanResults.yara_results;
-							}
-						} catch (error) {
-							console.error('Failed to get advanced scan results:', error);
+
+							isScanning = false;
 						}
-
+					} catch {
+						clearPoll();
 						isScanning = false;
 					}
-
-					scanStatus = {
-						id: `advanced-${Date.now()}`,
-						status: progress >= 100 ? 'completed' : 'running',
-						progress,
-						current_file: progress < 100 ? `Analyzing ${selectedAdvancedScanType}...` : null,
-						scanned_files: Math.floor(5000 * (progress / 100)),
-						threats_found: progress > 60 ? Math.floor(Math.random() * 5) : 0,
-						estimated_time_remaining: progress < 100 ? `${Math.ceil((100 - progress) / 5)} seconds` : null
-					};
 				}, 800);
 			}
 		} catch (error) {
@@ -162,7 +140,15 @@
 		}
 	}
 
-	function stopScan() {
+	function clearPoll() {
+		if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+	}
+
+	async function stopScan() {
+		if (scanSession) {
+			try { await api.stopScan(scanSession.id); } catch {}
+		}
+		clearPoll();
 		isScanning = false;
 		scanSession = null;
 		scanStatus = null;
@@ -170,6 +156,17 @@
 		memoryResults = [];
 		behavioralResults = [];
 		yaraResults = [];
+	}
+
+	async function quarantineAll() {
+		try {
+			await api.quarantineThreats([]);
+			if (scanSession) {
+				scanResults = await api.getScanResults(scanSession.id);
+			}
+		} catch (error) {
+			console.error('Quarantine failed:', error);
+		}
 	}
 
 	onMount(async () => {
@@ -396,10 +393,10 @@
 										{scanResults.threats.length} threats found during the last scan
 									</CardDescription>
 								</div>
-								<Button variant="destructive" size="sm">
-									<Trash2 class="w-4 h-4 mr-2" />
-									Quarantine All
-								</Button>
+							<Button variant="destructive" size="sm" on:click={quarantineAll}>
+								<Trash2 class="w-4 h-4 mr-2" />
+								Quarantine All
+							</Button>
 							</div>
 						</CardHeader>
 						<CardContent>

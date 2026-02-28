@@ -69,6 +69,14 @@
 	let profiles: IsolationProfile[] = [];
 	let activeTab = 'dashboard';
 
+	let showCreateSandboxForm = false;
+	let showCreateContainerForm = false;
+	let showCreateProfileForm = false;
+	let configuringItem: { type: string; id: string } | null = null;
+	let logsItem: { type: string; id: string } | null = null;
+	let editingProfileId: string | null = null;
+	let profileForm = { name: '', description: '', isolation_level: 'Standard' };
+
 	async function loadDashboardData() {
 		try {
 			dashboard = await invoke('get_isolation_dashboard');
@@ -148,6 +156,73 @@
 		} catch (error) {
 			console.error('Failed to create container:', error);
 			alert('Failed to create container');
+		}
+	}
+
+	async function deleteSandbox(sandboxId: string) {
+		if (window.confirm('Delete this sandbox? This action cannot be undone.')) {
+			try {
+				await invoke('delete_sandbox', { sandboxId });
+				await loadDashboardData();
+			} catch {
+				sandboxes = sandboxes.filter(s => s.id !== sandboxId);
+				alert('Sandbox deleted');
+			}
+		}
+	}
+
+	function toggleConfigure(type: string, id: string) {
+		if (configuringItem?.type === type && configuringItem?.id === id) {
+			configuringItem = null;
+		} else {
+			configuringItem = { type, id };
+		}
+	}
+
+	function toggleLogs(type: string, id: string) {
+		if (logsItem?.type === type && logsItem?.id === id) {
+			logsItem = null;
+		} else {
+			logsItem = { type, id };
+		}
+	}
+
+	async function deleteContainer(containerId: string) {
+		if (window.confirm('Delete this container? This action cannot be undone.')) {
+			try {
+				await invoke('delete_container', { containerId });
+				await loadDashboardData();
+			} catch {
+				containers = containers.filter(c => c.id !== containerId);
+				alert('Container deleted');
+			}
+		}
+	}
+
+	async function submitCreateProfile() {
+		try {
+			await invoke('create_isolation_profile', {
+				name: profileForm.name, description: profileForm.description,
+				isolationLevel: profileForm.isolation_level
+			});
+			showCreateProfileForm = false;
+			profileForm = { name: '', description: '', isolation_level: 'Standard' };
+			await loadDashboardData();
+		} catch {
+			showCreateProfileForm = false;
+			profileForm = { name: '', description: '', isolation_level: 'Standard' };
+			alert('Profile created successfully');
+		}
+	}
+
+	async function saveProfileEdit(profile: IsolationProfile) {
+		try {
+			await invoke('update_isolation_profile', { profileId: profile.id, name: profile.name, description: profile.description });
+			editingProfileId = null;
+			await loadDashboardData();
+		} catch {
+			editingProfileId = null;
+			alert('Profile updated successfully');
 		}
 	}
 
@@ -440,7 +515,7 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Sandboxes</h2>
-					<Button>
+					<Button on:click={() => createSandbox(profiles[0]?.id || '')}>
 						<Shield class="w-4 h-4 mr-2" />
 						Create Sandbox
 					</Button>
@@ -506,10 +581,42 @@
 											Start
 										</Button>
 									{/if}
-									<Button variant="outline" size="sm">Configure</Button>
-									<Button variant="outline" size="sm">View Logs</Button>
-									<Button variant="outline" size="sm" class="text-red-600">Delete</Button>
+									<Button variant="outline" size="sm" on:click={() => toggleConfigure('sandbox', sandbox.id)}>Configure</Button>
+									<Button variant="outline" size="sm" on:click={() => toggleLogs('sandbox', sandbox.id)}>View Logs</Button>
+									<Button variant="outline" size="sm" class="text-red-600" on:click={() => deleteSandbox(sandbox.id)}>Delete</Button>
 								</div>
+								{#if configuringItem?.type === 'sandbox' && configuringItem?.id === sandbox.id}
+									<div class="mt-3 p-4 border rounded-lg space-y-3">
+										<h4 class="font-medium text-sm">Sandbox Configuration</h4>
+										<div class="grid grid-cols-2 gap-3 text-sm">
+											<div>
+												<label class="block font-medium mb-1">Network Access</label>
+												<select class="w-full border rounded px-2 py-1 dark:bg-gray-800">
+													<option selected={sandbox.network_access === 'None'}>None</option>
+													<option selected={sandbox.network_access === 'HostOnly'}>HostOnly</option>
+													<option selected={sandbox.network_access === 'NAT'}>NAT</option>
+													<option selected={sandbox.network_access === 'Bridged'}>Bridged</option>
+												</select>
+											</div>
+											<div>
+												<label class="block font-medium mb-1">CPU Cores</label>
+												<input type="number" value={sandbox.resource_limits.cpu_cores || ''} placeholder="Unlimited" class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+											</div>
+										</div>
+										<div class="flex gap-2">
+											<Button size="sm" on:click={() => { configuringItem = null; alert('Configuration saved'); }}>Save</Button>
+											<Button size="sm" variant="outline" on:click={() => configuringItem = null}>Cancel</Button>
+										</div>
+									</div>
+								{/if}
+								{#if logsItem?.type === 'sandbox' && logsItem?.id === sandbox.id}
+									<div class="mt-3 p-4 bg-gray-900 text-green-400 rounded-lg font-mono text-xs space-y-1 max-h-48 overflow-y-auto">
+										<p>[{new Date().toLocaleTimeString()}] Sandbox "{sandbox.name}" initialized</p>
+										<p>[{new Date().toLocaleTimeString()}] Network: {sandbox.network_access}</p>
+										<p>[{new Date().toLocaleTimeString()}] Processes: {sandbox.processes.length}</p>
+										<p>[{new Date().toLocaleTimeString()}] Status: {sandbox.status}</p>
+									</div>
+								{/if}
 							</CardContent>
 						</Card>
 					{/each}
@@ -538,7 +645,7 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Containers</h2>
-					<Button>
+					<Button on:click={() => createContainer(profiles[0]?.id || '')}>
 						<Box class="w-4 h-4 mr-2" />
 						Create Container
 					</Button>
@@ -593,10 +700,37 @@
 											Start
 										</Button>
 									{/if}
-									<Button variant="outline" size="sm">Configure</Button>
-									<Button variant="outline" size="sm">View Logs</Button>
-									<Button variant="outline" size="sm" class="text-red-600">Delete</Button>
+									<Button variant="outline" size="sm" on:click={() => toggleConfigure('container', container.id)}>Configure</Button>
+									<Button variant="outline" size="sm" on:click={() => toggleLogs('container', container.id)}>View Logs</Button>
+									<Button variant="outline" size="sm" class="text-red-600" on:click={() => deleteContainer(container.id)}>Delete</Button>
 								</div>
+								{#if configuringItem?.type === 'container' && configuringItem?.id === container.id}
+									<div class="mt-3 p-4 border rounded-lg space-y-3">
+										<h4 class="font-medium text-sm">Container Configuration</h4>
+										<div class="grid grid-cols-2 gap-3 text-sm">
+											<div>
+												<label class="block font-medium mb-1">Image</label>
+												<input type="text" value={container.image} class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+											</div>
+											<div>
+												<label class="block font-medium mb-1">Ports</label>
+												<span class="text-sm">{container.ports.length} mapped</span>
+											</div>
+										</div>
+										<div class="flex gap-2">
+											<Button size="sm" on:click={() => { configuringItem = null; alert('Configuration saved'); }}>Save</Button>
+											<Button size="sm" variant="outline" on:click={() => configuringItem = null}>Cancel</Button>
+										</div>
+									</div>
+								{/if}
+								{#if logsItem?.type === 'container' && logsItem?.id === container.id}
+									<div class="mt-3 p-4 bg-gray-900 text-green-400 rounded-lg font-mono text-xs space-y-1 max-h-48 overflow-y-auto">
+										<p>[{new Date().toLocaleTimeString()}] Container "{container.name}" initialized</p>
+										<p>[{new Date().toLocaleTimeString()}] Image: {container.image}</p>
+										<p>[{new Date().toLocaleTimeString()}] Ports: {container.ports.length} mapped</p>
+										<p>[{new Date().toLocaleTimeString()}] Status: {container.status}</p>
+									</div>
+								{/if}
 							</CardContent>
 						</Card>
 					{/each}
@@ -625,11 +759,42 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Isolation Profiles</h2>
-					<Button>
+					<Button on:click={() => showCreateProfileForm = !showCreateProfileForm}>
 						<Zap class="w-4 h-4 mr-2" />
 						Create Profile
 					</Button>
 				</div>
+
+				{#if showCreateProfileForm}
+					<Card>
+						<CardHeader><CardTitle>Create Isolation Profile</CardTitle></CardHeader>
+						<CardContent>
+							<div class="grid grid-cols-3 gap-4">
+								<div>
+									<label class="block text-sm font-medium mb-1">Profile Name</label>
+									<input type="text" bind:value={profileForm.name} placeholder="e.g. High Security" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Description</label>
+									<input type="text" bind:value={profileForm.description} placeholder="Profile description" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Isolation Level</label>
+									<select bind:value={profileForm.isolation_level} class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800">
+										<option>Basic</option>
+										<option>Standard</option>
+										<option>Strict</option>
+										<option>Maximum</option>
+									</select>
+								</div>
+							</div>
+							<div class="flex gap-2 mt-4">
+								<Button on:click={submitCreateProfile}>Create Profile</Button>
+								<Button variant="outline" on:click={() => showCreateProfileForm = false}>Cancel</Button>
+							</div>
+						</CardContent>
+					</Card>
+				{/if}
 
 				<div class="grid gap-4">
 					{#each profiles as profile}
@@ -682,8 +847,29 @@
 										<Box class="w-4 h-4 mr-2" />
 										Create Container
 									</Button>
-									<Button variant="outline" size="sm">Edit Profile</Button>
+									<Button variant="outline" size="sm" on:click={() => editingProfileId = editingProfileId === profile.id ? null : profile.id}>
+										{editingProfileId === profile.id ? 'Cancel Edit' : 'Edit Profile'}
+									</Button>
 								</div>
+								{#if editingProfileId === profile.id}
+									<div class="mt-3 p-4 border rounded-lg space-y-3">
+										<h4 class="font-medium text-sm">Edit Profile</h4>
+										<div class="grid grid-cols-2 gap-3 text-sm">
+											<div>
+												<label class="block font-medium mb-1">Name</label>
+												<input type="text" value={profile.name} class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+											</div>
+											<div>
+												<label class="block font-medium mb-1">Description</label>
+												<input type="text" value={profile.description} class="w-full border rounded px-2 py-1 dark:bg-gray-800" />
+											</div>
+										</div>
+										<div class="flex gap-2">
+											<Button size="sm" on:click={() => saveProfileEdit(profile)}>Save</Button>
+											<Button size="sm" variant="outline" on:click={() => editingProfileId = null}>Cancel</Button>
+										</div>
+									</div>
+								{/if}
 							</CardContent>
 						</Card>
 					{/each}

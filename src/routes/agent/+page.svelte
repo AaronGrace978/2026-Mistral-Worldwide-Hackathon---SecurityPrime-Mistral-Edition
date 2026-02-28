@@ -292,15 +292,12 @@
 	<!-- Hero Header -->
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
-			<div class="mistral-icon-shell flex items-center justify-center w-14 h-14 rounded-2xl relative overflow-hidden">
-				<MistralCat size={36} className="drop-shadow-md" />
-				{#if status?.connected}
-					<div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
-				{/if}
-			</div>
+		<div class="mistral-icon-shell flex items-center justify-center w-14 h-14 rounded-2xl">
+			<MistralLogo size={28} className="drop-shadow-md" />
+		</div>
 			<div>
 				<h1 class="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-					<span class="text-mistral-gradient">Le Chat</span> Security Copilot
+					<span class="text-mistral-gradient">Le</span> Security Copilot
 					<Badge variant="outline" class="text-[10px] font-mono tracking-wider border-[#FF8205]/40 text-[#FF8205]">
 						MISTRAL AI
 					</Badge>
@@ -656,8 +653,9 @@
 
 <style>
 	.mistral-icon-shell {
-		background: linear-gradient(135deg, #E10500, #FA5010, #FF8205, #FFB000, #FFD800);
-		box-shadow: 0 0 24px rgba(255, 130, 5, 0.3), 0 0 48px rgba(255, 130, 5, 0.1);
+		background: #FFFFFF;
+		border: 2px solid rgba(255, 130, 5, 0.25);
+		box-shadow: 0 0 12px rgba(255, 130, 5, 0.1);
 	}
 
 	.mistral-avatar {

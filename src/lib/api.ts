@@ -388,6 +388,36 @@ export interface LittleSnitchStatus {
 	status_message: string;
 }
 
+export interface LittleSnitchRule {
+	id: string;
+	action: string;
+	direction: string;
+	process: string;
+	remote_host: string;
+	ports: string;
+	protocol: string;
+	notes: string;
+	category: string;
+	priority: string;
+}
+
+export interface DomainTrustEntry {
+	domain: string;
+	trust_level: string;
+	category: string;
+	first_seen: string;
+	connection_count: number;
+	notes: string;
+}
+
+export interface LittleSnitchRuleProfile {
+	name: string;
+	description: string;
+	created_at: string;
+	rules_json: string;
+	rule_count: number;
+}
+
 // Settings types
 export interface ModulesEnabled {
 	scanner: boolean;
@@ -537,6 +567,10 @@ export async function stopScan(scanId: string): Promise<boolean> {
 	return safeInvoke<boolean>('stop_scan', { scanId });
 }
 
+export async function quarantineThreats(threatIds: string[]): Promise<number> {
+	return safeInvoke<number>('quarantine_threats', { threatIds });
+}
+
 // ============================================================================
 // Firewall API
 // ============================================================================
@@ -577,6 +611,10 @@ export async function getEncryptedFiles(): Promise<EncryptedFile[]> {
 	return safeInvoke<EncryptedFile[]>('get_encrypted_files');
 }
 
+export async function removeEncryptedFile(fileId: string, deleteFile: boolean): Promise<void> {
+	return safeInvoke<void>('remove_encrypted_file', { fileId, deleteFile });
+}
+
 // ============================================================================
 // Vulnerability API
 // ============================================================================
@@ -603,6 +641,18 @@ export async function getNetworkStats(): Promise<NetworkStats> {
 
 export async function getLittleSnitchStatus(): Promise<LittleSnitchStatus> {
 	return safeInvoke<LittleSnitchStatus>('get_little_snitch_status');
+}
+
+export async function getLittleSnitchRules(): Promise<LittleSnitchRule[]> {
+	return safeInvoke<LittleSnitchRule[]>('get_little_snitch_rules');
+}
+
+export async function getLittleSnitchDomainTrust(): Promise<DomainTrustEntry[]> {
+	return safeInvoke<DomainTrustEntry[]>('get_little_snitch_domain_trust');
+}
+
+export async function exportLittleSnitchProfile(): Promise<LittleSnitchRuleProfile> {
+	return safeInvoke<LittleSnitchRuleProfile>('export_little_snitch_profile');
 }
 
 // ============================================================================
@@ -1881,6 +1931,31 @@ function getMockData(command: string, _args?: Record<string, unknown>): unknown 
 			bytes_received_per_sec: 850000,
 			blocked_connections: 156,
 			suspicious_connections: 3
+		},
+		get_little_snitch_rules: [
+			{ id: 'lsr-001', action: 'allow', direction: 'outgoing', process: 'any', remote_host: 'api.openai.com', ports: '443', protocol: 'tcp', notes: 'OpenAI API — required if using GPT models', category: 'ai_endpoint', priority: 'critical' },
+			{ id: 'lsr-002', action: 'allow', direction: 'outgoing', process: 'any', remote_host: 'api.anthropic.com', ports: '443', protocol: 'tcp', notes: 'Anthropic API — required if using Claude', category: 'ai_endpoint', priority: 'critical' },
+			{ id: 'lsr-003', action: 'allow', direction: 'outgoing', process: 'any', remote_host: 'localhost', ports: '11434,1234,8080', protocol: 'tcp', notes: 'Local model servers (Ollama, LM Studio)', category: 'ai_endpoint', priority: 'critical' },
+			{ id: 'lsr-004', action: 'allow', direction: 'outgoing', process: 'any', remote_host: 'update.microsoft.com', ports: '443', protocol: 'tcp', notes: 'Windows Update', category: 'update', priority: 'recommended' },
+			{ id: 'lsr-005', action: 'deny', direction: 'outgoing', process: 'any', remote_host: 'telemetry.microsoft.com', ports: 'any', protocol: 'any', notes: 'Microsoft Telemetry', category: 'telemetry', priority: 'recommended' },
+			{ id: 'lsr-006', action: 'deny', direction: 'outgoing', process: 'any', remote_host: 'analytics.google.com', ports: 'any', protocol: 'any', notes: 'Google Analytics tracking', category: 'telemetry', priority: 'recommended' },
+			{ id: 'lsr-007', action: 'deny', direction: 'outgoing', process: 'chrome.exe', remote_host: '185.234.72.19', ports: '8080', protocol: 'tcp', notes: 'Unknown destination seen from chrome.exe — review before allowing', category: 'uncategorized', priority: 'optional' },
+		],
+		get_little_snitch_domain_trust: [
+			{ domain: 'telemetry.microsoft.com', trust_level: 'suspicious', category: 'telemetry', first_seen: new Date().toISOString(), connection_count: 14, notes: 'Microsoft Telemetry' },
+			{ domain: 'analytics.google.com', trust_level: 'suspicious', category: 'telemetry', first_seen: new Date().toISOString(), connection_count: 8, notes: 'Google Analytics tracking' },
+			{ domain: '185.234.72.19', trust_level: 'unknown', category: 'uncategorized', first_seen: new Date().toISOString(), connection_count: 3, notes: 'Not in known-domain registry' },
+			{ domain: '45.33.12.56', trust_level: 'unknown', category: 'uncategorized', first_seen: new Date().toISOString(), connection_count: 1, notes: 'Not in known-domain registry' },
+			{ domain: 'api.openai.com', trust_level: 'trusted', category: 'ai_endpoint', first_seen: new Date().toISOString(), connection_count: 42, notes: 'OpenAI API' },
+			{ domain: '142.250.185.78', trust_level: 'unknown', category: 'uncategorized', first_seen: new Date().toISOString(), connection_count: 25, notes: 'Not in known-domain registry' },
+			{ domain: 'update.microsoft.com', trust_level: 'trusted', category: 'update', first_seen: new Date().toISOString(), connection_count: 6, notes: 'Windows Update' },
+		],
+		export_little_snitch_profile: {
+			name: 'SecurityPrime Recommended Rules',
+			description: 'Import this file into Little Snitch as a Rule Group.',
+			created_at: new Date().toISOString(),
+			rules_json: '{"name":"SecurityPrime Recommended Rules","rules":[]}',
+			rule_count: 7,
 		},
 		get_settings: {
 			theme: 'dark',

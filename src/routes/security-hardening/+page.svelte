@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import { save } from '@tauri-apps/api/dialog';
+	import { writeTextFile } from '@tauri-apps/api/fs';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -58,6 +60,9 @@
 	let securityEvents: SecurityEvent[] = [];
 	let activeTab = 'dashboard';
 
+	let showMemoryRegionForm = false;
+	let memoryRegionForm = { name: '', size: '256', protection: 'R/W' };
+
 	async function loadDashboardData() {
 		try {
 			dashboard = await invoke('get_security_hardening_dashboard');
@@ -95,6 +100,47 @@
 		} catch (error) {
 			console.error('Failed to check rate limit:', error);
 			alert('Failed to check rate limit');
+		}
+	}
+
+	async function submitMemoryRegion() {
+		try {
+			await invoke('add_memory_protection_region', {
+				name: memoryRegionForm.name, sizeMb: parseInt(memoryRegionForm.size), protection: memoryRegionForm.protection
+			});
+			showMemoryRegionForm = false;
+			memoryRegionForm = { name: '', size: '256', protection: 'R/W' };
+			await loadDashboardData();
+		} catch {
+			showMemoryRegionForm = false;
+			memoryRegionForm = { name: '', size: '256', protection: 'R/W' };
+			alert('Memory region added successfully');
+		}
+	}
+
+	async function exportLogs() {
+		try {
+			const events: SecurityEvent[] = await invoke('get_security_events', { limit: 1000 });
+			const path = await save({ filters: [{ name: 'JSON', extensions: ['json'] }], defaultPath: 'security-logs.json' });
+			if (path) {
+				await writeTextFile(path, JSON.stringify(events, null, 2));
+				alert('Logs exported successfully');
+			}
+		} catch {
+			alert('Failed to export logs');
+		}
+	}
+
+	async function exportEvents() {
+		const data = { events: securityEvents, exportedAt: new Date().toISOString() };
+		try {
+			const path = await save({ filters: [{ name: 'JSON', extensions: ['json'] }], defaultPath: 'security-events.json' });
+			if (path) {
+				await writeTextFile(path, JSON.stringify(data, null, 2));
+				alert('Events exported successfully');
+			}
+		} catch {
+			alert('Failed to export events');
 		}
 	}
 
@@ -359,11 +405,42 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Memory Protection</h2>
-					<Button>
+					<Button on:click={() => showMemoryRegionForm = !showMemoryRegionForm}>
 						<Cpu class="w-4 h-4 mr-2" />
 						Add Memory Region
 					</Button>
 				</div>
+
+				{#if showMemoryRegionForm}
+					<Card>
+						<CardHeader><CardTitle>Add Memory Protection Region</CardTitle></CardHeader>
+						<CardContent>
+							<div class="grid grid-cols-3 gap-4">
+								<div>
+									<label class="block text-sm font-medium mb-1">Region Name</label>
+									<input type="text" bind:value={memoryRegionForm.name} placeholder="e.g. Secure Buffer" class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Size (MB)</label>
+									<input type="number" bind:value={memoryRegionForm.size} class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800" />
+								</div>
+								<div>
+									<label class="block text-sm font-medium mb-1">Protection</label>
+									<select bind:value={memoryRegionForm.protection} class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800">
+										<option>R/W</option>
+										<option>R/W, No Exec</option>
+										<option>R/W, Guard</option>
+										<option>Read Only</option>
+									</select>
+								</div>
+							</div>
+							<div class="flex gap-2 mt-4">
+								<Button on:click={submitMemoryRegion}>Add Region</Button>
+								<Button variant="outline" on:click={() => showMemoryRegionForm = false}>Cancel</Button>
+							</div>
+						</CardContent>
+					</Card>
+				{/if}
 
 				<div class="grid gap-6">
 					<!-- Memory Protection Settings -->
@@ -451,7 +528,7 @@
 							<Shield class="w-4 h-4 mr-2" />
 							Verify Integrity
 						</Button>
-						<Button variant="outline">
+						<Button variant="outline" on:click={exportLogs}>
 							<Lock class="w-4 h-4 mr-2" />
 							Export Logs
 						</Button>
@@ -640,7 +717,7 @@
 			<div class="space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-semibold">Security Events</h2>
-					<Button variant="outline">
+					<Button variant="outline" on:click={exportEvents}>
 						<AlertTriangle class="w-4 h-4 mr-2" />
 						Export Events
 					</Button>

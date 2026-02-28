@@ -23,6 +23,7 @@
 
 	let encryptedFiles: api.EncryptedFile[] = [];
 	let loading = true;
+	let expandedFileId: string | null = null;
 
 	onMount(async () => {
 		try {
@@ -34,13 +35,79 @@
 		}
 	});
 
-	function handleEncrypt() {
-		// Would open file dialog
-		console.log('Opening file dialog for encryption...');
+	async function handleEncrypt() {
+		const filePath = await open({
+			multiple: false,
+			filters: [{ name: 'All Files', extensions: ['*'] }]
+		});
+		if (!filePath || typeof filePath !== 'string') return;
+
+		const password = prompt('Enter a password to encrypt the file:');
+		if (!password) return;
+
+		const confirm = prompt('Confirm password (re-enter):');
+		if (password !== confirm) {
+			alert('Passwords do not match.');
+			return;
+		}
+
+		try {
+			loading = true;
+			const result = await api.encryptFile(filePath, password);
+			if (result.success) {
+				alert(`File encrypted successfully!\nSaved to: ${result.encrypted_path}`);
+				encryptedFiles = await api.getEncryptedFiles();
+			}
+		} catch (error) {
+			console.error('Encryption failed:', error);
+			alert('Encryption failed: ' + error);
+		} finally {
+			loading = false;
+		}
 	}
 
-	function handleDecrypt(fileId: string) {
-		console.log('Decrypting file:', fileId);
+	async function handleDecrypt(fileId: string) {
+		const file = encryptedFiles.find((f) => f.id === fileId);
+		if (!file) return;
+
+		const password = prompt(`Enter password to decrypt "${file.original_name}":`);
+		if (!password) return;
+
+		try {
+			loading = true;
+			const result = await api.decryptFile(file.encrypted_path, password);
+			if (result.success) {
+				alert(`File decrypted successfully!\nSaved to: ${result.decrypted_path}`);
+				encryptedFiles = await api.getEncryptedFiles();
+			}
+		} catch (error) {
+			console.error('Decryption failed:', error);
+			alert('Decryption failed: ' + error);
+		} finally {
+			loading = false;
+		}
+	}
+
+	function toggleFileDetails(fileId: string) {
+		expandedFileId = expandedFileId === fileId ? null : fileId;
+	}
+
+	async function handleRemoveFile(fileId: string) {
+		const file = encryptedFiles.find((f) => f.id === fileId);
+		if (!file) return;
+
+		const confirmed = window.confirm(
+			`Delete encrypted file "${file.original_name}"?\nThe .enc file will be permanently removed.`
+		);
+		if (!confirmed) return;
+
+		try {
+			await api.removeEncryptedFile(fileId, true);
+			encryptedFiles = encryptedFiles.filter((f) => f.id !== fileId);
+		} catch (error) {
+			console.error('Failed to remove file:', error);
+			alert('Failed to remove file: ' + error);
+		}
 	}
 
 	async function exportKeys() {
@@ -237,14 +304,24 @@
 												<Unlock class="w-4 h-4 mr-2" />
 												Decrypt
 											</Button>
-											<Button variant="ghost" size="icon">
+											<Button variant="ghost" size="icon" on:click={() => toggleFileDetails(file.id)}>
 												<Eye class="w-4 h-4" />
 											</Button>
-											<Button variant="ghost" size="icon" class="text-destructive">
+											<Button variant="ghost" size="icon" class="text-destructive" on:click={() => handleRemoveFile(file.id)}>
 												<Trash2 class="w-4 h-4" />
 											</Button>
 										</div>
 									</div>
+									{#if expandedFileId === file.id}
+										<div class="mt-1 p-3 rounded-lg bg-muted/20 border border-border/50 text-xs space-y-1">
+											<p><span class="text-muted-foreground">Encrypted Path:</span> <span class="font-mono">{file.encrypted_path}</span></p>
+											<p><span class="text-muted-foreground">Encrypted Size:</span> {formatBytes(file.encrypted_size)}</p>
+											<p><span class="text-muted-foreground">Original Size:</span> {formatBytes(file.original_size)}</p>
+											{#if file.last_accessed}
+												<p><span class="text-muted-foreground">Last Accessed:</span> {formatRelativeTime(file.last_accessed)}</p>
+											{/if}
+										</div>
+									{/if}
 								{/each}
 							</div>
 						</ScrollArea>

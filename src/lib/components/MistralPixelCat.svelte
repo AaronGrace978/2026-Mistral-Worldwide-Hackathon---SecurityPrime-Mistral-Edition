@@ -6,7 +6,7 @@
 
 <img
 	src="/images/pixel-cat.webp"
-	alt="Le Chat pixel mascot"
+	alt="Le Security Copilot mascot"
 	width={size}
 	height={size}
 	class="{className} {animated ? 'pixel-cat-animated' : ''} pixel-cat-img"

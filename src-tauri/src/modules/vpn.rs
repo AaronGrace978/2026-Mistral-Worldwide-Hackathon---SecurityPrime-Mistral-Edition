@@ -353,11 +353,68 @@ fn generate_wireguard_keys() -> Result<(String, String), String> {
 // Tauri Commands
 // ============================================================================
 
-/// Get VPN connection status
+/// Get VPN connection status (checks real WireGuard state)
 #[tauri::command]
 pub async fn get_vpn_status() -> Result<VpnConnection, String> {
+    // Check if WireGuard has an active tunnel
+    if let Some(active) = detect_active_wireguard_tunnel() {
+        let mut conn = VPN_CONNECTION.write();
+        if conn.status != VpnStatus::Connected {
+            conn.status = VpnStatus::Connected;
+            conn.connected_at = Some(chrono::Utc::now().to_rfc3339());
+            conn.server = Some(VpnServer {
+                id: "local-wg".to_string(),
+                name: active.clone(),
+                country: "Local".to_string(),
+                country_code: "WG".to_string(),
+                city: "WireGuard".to_string(),
+                endpoint: "localhost".to_string(),
+                public_key: "".to_string(),
+                load: 0,
+                ping: Some(1),
+                protocol: "WireGuard".to_string(),
+                free: true,
+            });
+            if let Ok(ip) = get_public_ip().await {
+                conn.current_ip = Some(ip.ip);
+            }
+        }
+        return Ok(conn.clone());
+    }
+
     let conn = VPN_CONNECTION.read();
     Ok(conn.clone())
+}
+
+fn detect_active_wireguard_tunnel() -> Option<String> {
+    #[cfg(target_os = "windows")]
+    {
+        let output = hidden_command("sc")
+            .args(["query", "type=", "service", "state=", "active"])
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&output.stdout);
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("SERVICE_NAME:") {
+                let name = trimmed.replace("SERVICE_NAME:", "").trim().to_string();
+                if name.starts_with("WireGuardTunnel$") {
+                    return Some(name.replace("WireGuardTunnel$", ""));
+                }
+            }
+        }
+        None
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output = std::process::Command::new("wg")
+            .arg("show")
+            .arg("interfaces")
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if text.is_empty() { None } else { Some(text) }
+    }
 }
 
 /// Get available VPN servers

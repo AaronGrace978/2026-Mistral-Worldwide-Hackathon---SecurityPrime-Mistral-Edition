@@ -356,15 +356,21 @@ fn generate_wireguard_keys() -> Result<(String, String), String> {
 /// Get VPN connection status (checks real WireGuard state)
 #[tauri::command]
 pub async fn get_vpn_status() -> Result<VpnConnection, String> {
-    // Check if WireGuard has an active tunnel
     if let Some(active) = detect_active_wireguard_tunnel() {
-        let mut conn = VPN_CONNECTION.write();
-        if conn.status != VpnStatus::Connected {
+        let already_connected = {
+            let conn = VPN_CONNECTION.read();
+            conn.status == VpnStatus::Connected
+        };
+
+        if !already_connected {
+            let ip = get_public_ip().await.ok().map(|info| info.ip);
+            let mut conn = VPN_CONNECTION.write();
             conn.status = VpnStatus::Connected;
             conn.connected_at = Some(chrono::Utc::now().to_rfc3339());
+            conn.current_ip = ip;
             conn.server = Some(VpnServer {
                 id: "local-wg".to_string(),
-                name: active.clone(),
+                name: active,
                 country: "Local".to_string(),
                 country_code: "WG".to_string(),
                 city: "WireGuard".to_string(),
@@ -375,11 +381,7 @@ pub async fn get_vpn_status() -> Result<VpnConnection, String> {
                 protocol: "WireGuard".to_string(),
                 free: true,
             });
-            if let Ok(ip) = get_public_ip().await {
-                conn.current_ip = Some(ip.ip);
-            }
         }
-        return Ok(conn.clone());
     }
 
     let conn = VPN_CONNECTION.read();

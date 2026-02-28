@@ -219,6 +219,7 @@ fn main() {
             modules::history::get_threat_history,
             modules::history::get_threat_stats,
             modules::history::add_threat_event,
+            modules::history::get_edr_timeline,
             // Plugin commands
             modules::plugins::get_plugins,
             modules::plugins::install_plugin,
@@ -275,13 +276,27 @@ fn main() {
             modules::reporting::disconnect_msp_server,
             modules::reporting::send_heartbeat_now,
             modules::reporting::report_security_event,
+            // Report generator commands
+            modules::report_generator::generate_soc_report,
+            modules::report_generator::generate_compliance_audit_report,
+            modules::report_generator::export_report_json,
+            modules::report_generator::export_report_html,
             // Flagship enhancement commands
             modules::flagship::get_autonomous_response_playbooks,
             modules::flagship::run_autonomous_response_dry_run,
+            modules::flagship::execute_playbook,
+            modules::flagship::get_playbook_audit_trail,
             modules::flagship::get_attack_surface_snapshot,
             modules::flagship::refresh_attack_surface_snapshot,
             modules::flagship::get_signed_rule_pack_status,
             modules::flagship::verify_rule_pack_signature,
+            // Application Control commands
+            modules::app_control::verify_application,
+            modules::app_control::check_app_signature,
+            modules::app_control::get_process_chain,
+            modules::app_control::get_app_control_status,
+            modules::app_control::add_to_allowlist,
+            modules::app_control::add_to_denylist,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Cyber Security Prime");

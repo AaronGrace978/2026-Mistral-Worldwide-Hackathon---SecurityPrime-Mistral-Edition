@@ -2,6 +2,7 @@
 // Each security feature is implemented as a separate module for clean separation of concerns
 
 pub mod agent;
+pub mod app_control;
 pub mod compliance;
 pub mod encryption;
 pub mod firewall;
@@ -11,6 +12,7 @@ pub mod isolation;
 pub mod management;
 pub mod network;
 pub mod plugins;
+pub mod report_generator;
 pub mod reporting;
 pub mod scanner;
 pub mod secure_storage;

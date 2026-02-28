@@ -1742,85 +1742,333 @@ pub async fn analyze_behavioral_patterns_ai(
     network_connections: Vec<String>,
     file_access_patterns: Vec<String>
 ) -> Result<Vec<BehavioralPattern>, String> {
-    let mut patterns = Vec::new();
+    let mut patterns: Vec<BehavioralPattern> = Vec::new();
 
-    // Analyze process patterns
-    let suspicious_processes = process_list.iter()
-        .filter(|proc| {
-            let proc_lower = proc.to_lowercase();
-            proc_lower.contains("unknown") ||
-            proc_lower.contains("suspicious") ||
-            proc_lower.contains("unverified")
-        })
-        .count();
+    // ── 1. Parse process entries into a lookup structure ──────────────
+    // Expected formats: "name,pid,ppid,user" or "name pid ppid" or just "name"
+    struct ProcInfo {
+        name: String,
+        pid: String,
+        ppid: String,
+        raw: String,
+    }
 
-    if suspicious_processes > 0 {
+    let procs: Vec<ProcInfo> = process_list.iter().map(|raw| {
+        let parts: Vec<&str> = if raw.contains(',') {
+            raw.split(',').map(|s| s.trim().trim_matches('"')).collect()
+        } else {
+            raw.split_whitespace().collect()
+        };
+        ProcInfo {
+            name: parts.first().unwrap_or(&"").to_lowercase(),
+            pid:  parts.get(1).unwrap_or(&"").to_string(),
+            ppid: parts.get(2).unwrap_or(&"").to_string(),
+            raw:  raw.clone(),
+        }
+    }).collect();
+
+    let proc_names: std::collections::HashSet<String> =
+        procs.iter().map(|p| p.name.clone()).collect();
+
+    let pid_to_name: HashMap<String, String> =
+        procs.iter().map(|p| (p.pid.clone(), p.name.clone())).collect();
+
+    // ── 2. Suspicious process-chain detection ────────────────────────
+    let shell_names = ["powershell.exe", "pwsh.exe", "cmd.exe", "wscript.exe",
+                       "cscript.exe", "mshta.exe", "regsvr32.exe", "rundll32.exe"];
+    let office_names = ["winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe",
+                        "msaccess.exe", "onenote.exe"];
+
+    let mut chain_evidence: Vec<String> = Vec::new();
+    for p in &procs {
+        if shell_names.contains(&p.name.as_str()) {
+            if let Some(parent_name) = pid_to_name.get(&p.ppid) {
+                if office_names.contains(&parent_name.as_str()) {
+                    chain_evidence.push(format!(
+                        "{} (PID {}) spawned by {} (PPID {}) — possible macro/exploit execution",
+                        p.name, p.pid, parent_name, p.ppid
+                    ));
+                }
+            }
+        }
+    }
+
+    let lolbin_names = ["certutil.exe", "bitsadmin.exe", "msiexec.exe",
+                        "regasm.exe", "installutil.exe", "msbuild.exe"];
+    for p in &procs {
+        if lolbin_names.contains(&p.name.as_str()) {
+            chain_evidence.push(format!(
+                "Living-off-the-land binary detected: {} (PID {})",
+                p.name, p.pid
+            ));
+        }
+    }
+
+    if !chain_evidence.is_empty() {
         patterns.push(BehavioralPattern {
             pattern_type: "suspicious".to_string(),
-            description: format!("{} suspicious processes detected", suspicious_processes),
-            frequency: "ongoing".to_string(),
-            risk_level: "medium".to_string(),
-            observed_behaviors: process_list.iter()
-                .filter(|proc| proc.to_lowercase().contains("suspicious"))
-                .cloned()
-                .collect(),
-            analysis: "Suspicious processes may indicate malware or unauthorized software".to_string(),
+            description: format!(
+                "Suspicious process chain: {} indicator(s) of shell/LOLBin spawning from unexpected parents",
+                chain_evidence.len()
+            ),
+            frequency: "active".to_string(),
+            risk_level: if chain_evidence.len() >= 3 { "critical" } else { "high" }.to_string(),
+            observed_behaviors: chain_evidence,
+            analysis: "Shells or living-off-the-land binaries spawned from Office apps or \
+                       unusual parents are a strong indicator of exploit/macro-based attacks. \
+                       Investigate the parent process and review recent document opens."
+                .to_string(),
         });
     }
 
-    // Analyze network patterns
-    let external_connections = network_connections.iter()
-        .filter(|conn| conn.contains("external") || conn.contains("unknown"))
-        .count();
+    // ── 3. Persistence indicators ────────────────────────────────────
+    let persistence_keywords = [
+        ("currentversion\\run", "Registry Run key"),
+        ("currentversion\\runonce", "Registry RunOnce key"),
+        ("startup", "Startup folder"),
+        ("schtasks", "Scheduled task creation"),
+        ("at.exe", "AT scheduled task"),
+        ("sc.exe create", "Service creation"),
+        ("wmic process call create", "WMI process creation"),
+        ("reg add", "Registry modification"),
+        ("new-scheduledtask", "PowerShell scheduled task"),
+        ("register-scheduledjob", "PowerShell scheduled job"),
+    ];
 
-    if external_connections > 10 {
+    let all_text: Vec<String> = process_list.iter()
+        .chain(file_access_patterns.iter())
+        .cloned()
+        .collect();
+
+    let mut persist_evidence: Vec<String> = Vec::new();
+    for entry in &all_text {
+        let lower = entry.to_lowercase();
+        for (keyword, label) in &persistence_keywords {
+            if lower.contains(keyword) {
+                persist_evidence.push(format!("{}: {}", label, entry));
+            }
+        }
+    }
+
+    if !persist_evidence.is_empty() {
         patterns.push(BehavioralPattern {
             pattern_type: "anomalous".to_string(),
-            description: format!("High number of external connections ({})", external_connections),
-            frequency: "ongoing".to_string(),
-            risk_level: "high".to_string(),
-            observed_behaviors: network_connections.iter()
-                .filter(|conn| conn.contains("external"))
-                .take(5)
-                .cloned()
-                .collect(),
-            analysis: "Excessive external connections may indicate data exfiltration or botnet activity".to_string(),
+            description: format!(
+                "Persistence mechanism: {} indicator(s) of auto-start or scheduled persistence",
+                persist_evidence.len()
+            ),
+            frequency: "recent".to_string(),
+            risk_level: if persist_evidence.len() >= 2 { "high" } else { "medium" }.to_string(),
+            observed_behaviors: persist_evidence,
+            analysis: "References to Run keys, scheduled tasks, or startup folders suggest \
+                       an attempt to maintain persistence across reboots. Verify whether these \
+                       are legitimate administrative actions or indicators of compromise."
+                .to_string(),
         });
     }
 
-    // Analyze file access patterns
-    let sensitive_file_access = file_access_patterns.iter()
-        .filter(|access| {
-            access.to_lowercase().contains("system32") ||
-            access.to_lowercase().contains("config") ||
-            access.to_lowercase().contains("password")
-        })
-        .count();
+    // ── 4. Lateral-movement detection via network connections ─────────
+    // Expected connection format: "proto local_addr:port remote_addr:port state pid"
+    // or CSV variants. We extract remote ports.
+    let lateral_ports: HashMap<u16, &str> = [
+        (445u16, "SMB"), (3389, "RDP"), (135, "WMI/DCOM"),
+        (5985, "WinRM-HTTP"), (5986, "WinRM-HTTPS"), (22, "SSH"),
+    ].iter().cloned().collect();
 
-    if sensitive_file_access > 0 {
+    let mut lateral_evidence: Vec<String> = Vec::new();
+
+    for conn in &network_connections {
+        for (port, label) in &lateral_ports {
+            let port_str = format!(":{}", port);
+            if conn.contains(&port_str) {
+                lateral_evidence.push(format!("{} connection (port {}) — {}", label, port, conn));
+            }
+        }
+    }
+
+    if !lateral_evidence.is_empty() {
+        let uniq_protocols: std::collections::HashSet<&str> = lateral_evidence.iter()
+            .filter_map(|e| e.split(' ').next())
+            .collect();
+        patterns.push(BehavioralPattern {
+            pattern_type: "anomalous".to_string(),
+            description: format!(
+                "Lateral movement: {} connection(s) over {} protocol(s) ({})",
+                lateral_evidence.len(),
+                uniq_protocols.len(),
+                uniq_protocols.into_iter().collect::<Vec<_>>().join(", ")
+            ),
+            frequency: "active".to_string(),
+            risk_level: if lateral_evidence.len() >= 5 { "critical" } else { "high" }.to_string(),
+            observed_behaviors: lateral_evidence.iter().take(10).cloned().collect(),
+            analysis: "Active connections on SMB, RDP, WMI, or WinRM ports may indicate \
+                       lateral movement within the network. Cross-reference with expected \
+                       admin activity and check destination hosts for compromise."
+                .to_string(),
+        });
+    }
+
+    // ── 5. Data-exfiltration patterns ────────────────────────────────
+    let suspicious_exfil_ports: Vec<u16> = vec![
+        4444, 5555, 8443, 8080, 1337, 31337, 6667, 6697, // common C2/IRC
+    ];
+    let dns_exfil_indicators = ["txt", "nslookup", "dns"];
+
+    let mut exfil_evidence: Vec<String> = Vec::new();
+
+    for conn in &network_connections {
+        let lower = conn.to_lowercase();
+        for port in &suspicious_exfil_ports {
+            if lower.contains(&format!(":{}", port)) {
+                exfil_evidence.push(format!(
+                    "Connection to unusual port {} — possible C2 channel: {}", port, conn
+                ));
+            }
+        }
+        // Large outbound heuristic: look for "bytes" or size tokens > 10 MB
+        let parts: Vec<&str> = conn.split_whitespace().collect();
+        for part in &parts {
+            if let Ok(bytes) = part.parse::<u64>() {
+                if bytes > 10_000_000 {
+                    exfil_evidence.push(format!(
+                        "Large outbound transfer (~{:.1} MB): {}",
+                        bytes as f64 / 1_000_000.0, conn
+                    ));
+                }
+            }
+        }
+        for indicator in &dns_exfil_indicators {
+            if lower.contains(indicator) && lower.contains("outbound") {
+                exfil_evidence.push(format!("Possible DNS exfiltration: {}", conn));
+            }
+        }
+    }
+
+    if !exfil_evidence.is_empty() {
         patterns.push(BehavioralPattern {
             pattern_type: "suspicious".to_string(),
-            description: "Access to sensitive system files detected".to_string(),
-            frequency: "occasional".to_string(),
-            risk_level: "medium".to_string(),
-            observed_behaviors: file_access_patterns.iter()
-                .filter(|access| access.to_lowercase().contains("system32"))
-                .take(3)
-                .cloned()
-                .collect(),
-            analysis: "Access to system files is normal but should be monitored for unauthorized changes".to_string(),
+            description: format!(
+                "Data exfiltration: {} indicator(s) of large transfers or unusual outbound ports",
+                exfil_evidence.len()
+            ),
+            frequency: "recent".to_string(),
+            risk_level: if exfil_evidence.len() >= 3 { "critical" } else { "high" }.to_string(),
+            observed_behaviors: exfil_evidence.iter().take(10).cloned().collect(),
+            analysis: "Connections to uncommon ports or large outbound data transfers can \
+                       indicate data exfiltration or command-and-control communication. \
+                       Inspect the destination IPs and correlate with threat intelligence feeds."
+                .to_string(),
         });
     }
 
-    // Add normal pattern if everything looks good
+    // ── 6. Cross-input correlation ───────────────────────────────────
+    // If a process name appears in BOTH the process list AND network connections,
+    // it is actively communicating — flag the overlap.
+    let mut correlated_evidence: Vec<String> = Vec::new();
+
+    for conn in &network_connections {
+        let conn_lower = conn.to_lowercase();
+        for pname in &proc_names {
+            if pname.is_empty() { continue; }
+            if conn_lower.contains(pname.as_str()) {
+                correlated_evidence.push(format!(
+                    "Process '{}' appears in both process list and network connections: {}",
+                    pname, conn
+                ));
+            }
+        }
+    }
+
+    // Also check file-access ↔ process overlap (e.g. process writing to suspicious paths)
+    let sensitive_paths = ["\\appdata\\roaming", "\\temp\\", "\\programdata\\",
+                           "\\downloads\\", "shadow", "sam", "ntds.dit"];
+    for access in &file_access_patterns {
+        let lower = access.to_lowercase();
+        for pname in &proc_names {
+            if pname.is_empty() { continue; }
+            if lower.contains(pname.as_str()) {
+                for spath in &sensitive_paths {
+                    if lower.contains(spath) {
+                        correlated_evidence.push(format!(
+                            "Process '{}' accessing sensitive path: {}",
+                            pname, access
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    if !correlated_evidence.is_empty() {
+        patterns.push(BehavioralPattern {
+            pattern_type: "anomalous".to_string(),
+            description: format!(
+                "Cross-signal correlation: {} linked indicator(s) across process, network, and file data",
+                correlated_evidence.len()
+            ),
+            frequency: "active".to_string(),
+            risk_level: if correlated_evidence.len() >= 4 { "critical" }
+                        else if correlated_evidence.len() >= 2 { "high" }
+                        else { "medium" }.to_string(),
+            observed_behaviors: correlated_evidence.iter().take(10).cloned().collect(),
+            analysis: "When the same process name surfaces across multiple telemetry sources \
+                       (process list, network connections, file access) it strengthens the \
+                       confidence that the activity is coordinated. Prioritize investigation \
+                       of the overlapping processes."
+                .to_string(),
+        });
+    }
+
+    // ── 7. Credential-access / sensitive-file indicators ─────────────
+    let cred_keywords = ["mimikatz", "lsass", "procdump", "sekurlsa",
+                         "hashdump", "ntds.dit", "sam", "security",
+                         "credential", "password", "kerberos", "ticket"];
+    let mut cred_evidence: Vec<String> = Vec::new();
+
+    for entry in process_list.iter().chain(file_access_patterns.iter()) {
+        let lower = entry.to_lowercase();
+        for kw in &cred_keywords {
+            if lower.contains(kw) {
+                cred_evidence.push(format!("Credential-access indicator '{}': {}", kw, entry));
+                break;
+            }
+        }
+    }
+
+    if !cred_evidence.is_empty() {
+        patterns.push(BehavioralPattern {
+            pattern_type: "suspicious".to_string(),
+            description: format!(
+                "Credential access: {} indicator(s) of credential harvesting or dumping tools",
+                cred_evidence.len()
+            ),
+            frequency: "recent".to_string(),
+            risk_level: "critical".to_string(),
+            observed_behaviors: cred_evidence.iter().take(10).cloned().collect(),
+            analysis: "References to credential-dumping tools (Mimikatz, LSASS access, \
+                       SAM/NTDS access) are high-confidence indicators of active credential \
+                       theft. Immediately isolate the affected endpoint and reset compromised \
+                       accounts."
+                .to_string(),
+        });
+    }
+
+    // ── 8. Default safe pattern when nothing flagged ──────────────────
     if patterns.is_empty() {
         patterns.push(BehavioralPattern {
             pattern_type: "normal".to_string(),
-            description: "System behavior appears normal".to_string(),
+            description: "System behavior appears normal across all telemetry inputs".to_string(),
             frequency: "consistent".to_string(),
             risk_level: "low".to_string(),
-            observed_behaviors: vec!["Standard system processes active".to_string()],
-            analysis: "No anomalous behavior detected in current analysis".to_string(),
+            observed_behaviors: vec![
+                format!("{} processes analyzed", procs.len()),
+                format!("{} network connections analyzed", network_connections.len()),
+                format!("{} file-access entries analyzed", file_access_patterns.len()),
+            ],
+            analysis: "No anomalous behavior detected. Process chains, network connections, \
+                       file-access patterns, and cross-source correlations are within normal \
+                       parameters."
+                .to_string(),
         });
     }
 

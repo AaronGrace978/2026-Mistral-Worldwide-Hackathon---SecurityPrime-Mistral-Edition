@@ -585,7 +585,7 @@
 								? 'bg-blue-600/20 border border-blue-500/20'
 								: 'bg-muted/40 border border-border/50'}">
 								{#if message.role === 'assistant'}
-									<div class="prose prose-sm prose-invert max-w-none message-content text-foreground">
+									<div class="prose prose-sm dark:prose-invert max-w-none message-content">
 										{#if message.streaming && message.content === ''}
 											<div class="flex items-center gap-2 text-sm text-muted-foreground">
 												<Loader2 class="w-4 h-4 animate-spin text-orange-400" />
@@ -709,9 +709,14 @@
 		margin: 0.15em 0;
 	}
 
+	:global(.message-content) {
+		color: hsl(var(--foreground));
+	}
+
 	:global(.message-content code) {
 		font-size: 0.85em;
 		background: hsl(var(--muted));
+		color: hsl(var(--foreground));
 		padding: 0.15em 0.4em;
 		border-radius: 0.25em;
 	}
@@ -736,6 +741,13 @@
 		margin-top: 0.75em;
 		margin-bottom: 0.25em;
 		font-weight: 600;
+		color: hsl(var(--foreground));
+	}
+
+	:global(.message-content p),
+	:global(.message-content li),
+	:global(.message-content span) {
+		color: hsl(var(--foreground));
 	}
 
 	:global(.message-content blockquote) {
@@ -755,10 +767,15 @@
 	:global(.message-content td) {
 		border: 1px solid hsl(var(--border));
 		padding: 0.35em 0.75em;
+		color: hsl(var(--foreground));
 	}
 
 	:global(.message-content th) {
 		background: hsl(var(--muted) / 0.5);
+	}
+
+	:global(.message-content strong) {
+		color: hsl(var(--foreground));
 	}
 
 	.animate-in {

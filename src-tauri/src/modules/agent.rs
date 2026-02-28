@@ -12,6 +12,10 @@ use std::path::Path;
 use std::fs;
 use std::collections::HashMap;
 
+const MISTRAL_DEFAULT_MODEL: &str = "mistral-large-3:675b";
+const MISTRAL_FAST_MODEL: &str = "ministral:8b";
+const MISTRAL_DEEP_MODEL: &str = "mistral-large-3:675b";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -33,23 +37,46 @@ impl Default for OllamaConfig {
             return cloud_config;
         }
         
-        // Default to Ollama Cloud with hardcoded API key (for development)
-        // This ensures cloud models work even if config file isn't found
-        log::info!("Using hardcoded Ollama Cloud config (config file not found)");
+        log::info!("Config file not found — using default Ollama Cloud settings");
         Self {
             base_url: "https://ollama.com".to_string(),
-            api_key: Some("16a43cfd76114a4bb4fdcc6b19243382.Vwk6ornm9vX4rsn0U6hb94za".to_string()),
-            default_model: "gemma3:27b".to_string(),         // General purpose cloud model
-            fast_model: "gemma3:27b".to_string(),            // Fast cloud model
-            deep_model: "deepseek-v3.1:671b".to_string(),    // Deep analysis cloud model
+            api_key: None,
+            default_model: MISTRAL_DEFAULT_MODEL.to_string(),
+            fast_model: MISTRAL_FAST_MODEL.to_string(),
+            deep_model: MISTRAL_DEEP_MODEL.to_string(),
             timeout_secs: 300,
         }
     }
 }
 
+fn is_mistral_model(model_name: &str) -> bool {
+    let normalized = model_name.to_lowercase();
+    let mistral_markers = ["mistral", "mixtral", "ministral", "codestral", "devstral", "pixtral"];
+    mistral_markers.iter().any(|marker| normalized.contains(marker))
+}
+
+fn normalize_mistral_model(model_name: Option<String>, fallback: &str) -> String {
+    if let Some(candidate) = model_name {
+        if is_mistral_model(&candidate) {
+            return candidate;
+        }
+    }
+
+    if is_mistral_model(fallback) {
+        fallback.to_string()
+    } else {
+        MISTRAL_DEFAULT_MODEL.to_string()
+    }
+}
+
+fn enforce_mistral_config(config: &mut OllamaConfig) {
+    config.default_model = normalize_mistral_model(Some(config.default_model.clone()), MISTRAL_DEFAULT_MODEL);
+    config.fast_model = normalize_mistral_model(Some(config.fast_model.clone()), &config.default_model);
+    config.deep_model = normalize_mistral_model(Some(config.deep_model.clone()), &config.default_model);
+}
+
 /// Load Ollama Cloud configuration from config file
 fn load_cloud_config() -> Option<OllamaConfig> {
-    // Try multiple config paths - including absolute paths for development
     let mut config_paths = vec![
         std::path::PathBuf::from("config/ollama_cloud_config.json"),
         std::path::PathBuf::from("../config/ollama_cloud_config.json"),
@@ -65,9 +92,16 @@ fn load_cloud_config() -> Option<OllamaConfig> {
             config_paths.push(exe_dir.join("../../../config/ollama_cloud_config.json"));
         }
     }
-    
-    // Add absolute path for Windows development
-    config_paths.push(std::path::PathBuf::from(r"G:\SecurityPrime\config\ollama_cloud_config.json"));
+
+    // Resolve from SECURITYPRIME_CONFIG_DIR env var if set (portable)
+    if let Ok(config_dir) = std::env::var("SECURITYPRIME_CONFIG_DIR") {
+        config_paths.push(std::path::PathBuf::from(&config_dir).join("ollama_cloud_config.json"));
+    }
+
+    // Resolve from CARGO_MANIFEST_DIR for development builds
+    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        config_paths.push(std::path::PathBuf::from(&manifest_dir).join("../config/ollama_cloud_config.json"));
+    }
     
     for config_path in &config_paths {
         log::debug!("Trying config path: {:?}", config_path);
@@ -97,23 +131,25 @@ fn load_cloud_config() -> Option<OllamaConfig> {
                 // Get cloud models for defaults
                 let cloud_models = json.get("cloud_models");
                 
-                // Find best models for each use case
+                // Find best models for each use case (Mistral-only)
                 let default_model = find_model_for_task(cloud_models, "general_purpose")
-                    .unwrap_or_else(|| "gemma3:27b".to_string());
+                    .unwrap_or_else(|| MISTRAL_DEFAULT_MODEL.to_string());
                 let fast_model = find_model_for_task(cloud_models, "efficient")
-                    .unwrap_or_else(|| "gemma3:27b".to_string());
+                    .unwrap_or_else(|| MISTRAL_FAST_MODEL.to_string());
                 let deep_model = find_model_for_task(cloud_models, "threat_analysis")
-                    .unwrap_or_else(|| "deepseek-v3.1:671b".to_string());
+                    .unwrap_or_else(|| MISTRAL_DEEP_MODEL.to_string());
                 
                 log::info!("Loaded Ollama Cloud config - base_url: {}, default_model: {}", base_url, default_model);
-                return Some(OllamaConfig {
+                let mut config = OllamaConfig {
                     base_url,
                     api_key,
                     default_model,
                     fast_model,
                     deep_model,
                     timeout_secs: timeout,
-                });
+                };
+                enforce_mistral_config(&mut config);
+                return Some(config);
             }
         }
     }
@@ -128,6 +164,9 @@ fn find_model_for_task(cloud_models: Option<&serde_json::Value>, task: &str) -> 
     
     for (model_id, model_info) in models {
         if !model_info.get("enabled")?.as_bool()? {
+            continue;
+        }
+        if !is_mistral_model(model_id) {
             continue;
         }
         
@@ -348,7 +387,7 @@ impl OllamaClient {
         let (current_model, headers, is_cloud) = {
             let config = self.config.read();
             (
-                config.default_model.clone(),
+                normalize_mistral_model(Some(config.default_model.clone()), MISTRAL_DEFAULT_MODEL),
                 self.get_headers(),
                 config.base_url.contains("ollama.com"),
             )
@@ -364,29 +403,33 @@ impl OllamaClient {
                 let config = self.config.read();
                 let cloud_models = vec![
                     ModelInfo {
-                        name: config.default_model.clone(),
+                        name: normalize_mistral_model(Some(config.default_model.clone()), MISTRAL_DEFAULT_MODEL),
                         size: None,
                         modified_at: None,
                         digest: Some("cloud".to_string()),
                     },
                     ModelInfo {
-                        name: config.fast_model.clone(),
+                        name: normalize_mistral_model(Some(config.fast_model.clone()), MISTRAL_DEFAULT_MODEL),
                         size: None,
                         modified_at: None,
                         digest: Some("cloud".to_string()),
                     },
                     ModelInfo {
-                        name: config.deep_model.clone(),
+                        name: normalize_mistral_model(Some(config.deep_model.clone()), MISTRAL_DEFAULT_MODEL),
                         size: None,
                         modified_at: None,
                         digest: Some("cloud".to_string()),
                     },
                 ];
+                let mut unique_models: std::collections::HashMap<String, ModelInfo> = std::collections::HashMap::new();
+                for model in cloud_models.into_iter().filter(|m| is_mistral_model(&m.name)) {
+                    unique_models.insert(model.name.clone(), model);
+                }
                 
                 return Ok(AgentStatus {
                     connected: true,
-                    available_models: cloud_models,
-                    current_model,
+                    available_models: unique_models.into_values().collect(),
+                    current_model: normalize_mistral_model(Some(current_model), MISTRAL_DEFAULT_MODEL),
                     session_active: false,
                 });
             } else {
@@ -407,8 +450,12 @@ impl OllamaClient {
                         .as_array()
                         .map(|arr| {
                             arr.iter().filter_map(|m| {
+                                let name = m["name"].as_str()?.to_string();
+                                if !is_mistral_model(&name) {
+                                    return None;
+                                }
                                 Some(ModelInfo {
-                                    name: m["name"].as_str()?.to_string(),
+                                    name,
                                     size: m["size"].as_u64(),
                                     modified_at: m["modified_at"].as_str().map(String::from),
                                     digest: m["digest"].as_str().map(String::from),
@@ -420,7 +467,7 @@ impl OllamaClient {
                     Ok(AgentStatus {
                         connected: true,
                         available_models: models,
-                        current_model,
+                        current_model: normalize_mistral_model(Some(current_model), MISTRAL_DEFAULT_MODEL),
                         session_active: false,
                     })
                 } else {
@@ -446,7 +493,7 @@ impl OllamaClient {
         let (model_name, headers) = {
             let config = self.config.read();
             (
-                model.unwrap_or_else(|| config.default_model.clone()),
+                normalize_mistral_model(model, &config.default_model),
                 self.get_headers(),
             )
         };
@@ -526,9 +573,10 @@ fn get_or_create_client() -> OllamaClient {
             config.api_key = Some(api_key);
         }
     }
+    enforce_mistral_config(&mut config);
     
-    log::info!("Initializing Ollama client with base_url: {}, model: {}", 
-               config.base_url, config.default_model);
+    log::info!("Initializing Ollama client — base_url: {}, model: {}, cloud: {}", 
+               config.base_url, config.default_model, config.base_url.contains("ollama.com"));
 
     let new_client = OllamaClient::new(config);
     let mut client_lock = OLLAMA_CLIENT.write();
@@ -589,6 +637,7 @@ pub async fn configure_agent(mut config: OllamaConfig) -> Result<AgentStatus, St
     
     // Clear API key from config struct (it's now in secure storage)
     config.api_key = None;
+    enforce_mistral_config(&mut config);
     
     let client = get_or_create_client();
     client.update_config(config);
@@ -608,7 +657,7 @@ pub async fn start_agent_session(model: Option<String>) -> Result<AgentSession, 
     let client = get_or_create_client();
     let model_name = {
         let config = client.config.read();
-        model.unwrap_or_else(|| config.default_model.clone())
+        normalize_mistral_model(model, &config.default_model)
     };
 
     let session = AgentSession {
@@ -724,7 +773,10 @@ pub async fn chat_with_agent(message: String, model: Option<String>) -> Result<S
                 role: "user".to_string(),
                 content: enhanced_message.clone(),
             });
-            (session.messages.clone(), model.or_else(|| Some(session.model.clone())))
+            (
+                session.messages.clone(),
+                Some(normalize_mistral_model(model.or_else(|| Some(session.model.clone())), &session.model)),
+            )
         } else {
             return Err("Failed to get or create session".to_string());
         }
@@ -969,7 +1021,10 @@ pub async fn chat_with_agent_stream(
                 role: "user".to_string(),
                 content: enhanced_message.clone(),
             });
-            (session.messages.clone(), model.or_else(|| Some(session.model.clone())))
+            (
+                session.messages.clone(),
+                Some(normalize_mistral_model(model.or_else(|| Some(session.model.clone())), &session.model)),
+            )
         } else {
             return Err("Failed to get or create session".to_string());
         }
@@ -979,7 +1034,7 @@ pub async fn chat_with_agent_stream(
     let (model_name, headers) = {
         let config = client.config.read();
         (
-            model_to_use.unwrap_or_else(|| config.default_model.clone()),
+            normalize_mistral_model(model_to_use, &config.default_model),
             client.get_headers(),
         )
     };

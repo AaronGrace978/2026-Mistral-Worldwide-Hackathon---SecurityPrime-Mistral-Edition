@@ -31,12 +31,14 @@ pub async fn list(
 
 /// Get a single alert
 pub async fn get(
-    Extension(_state): Extension<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     _user: AuthUser,
-    Path(_id): Path<Uuid>,
+    Path(id): Path<Uuid>,
 ) -> Result<Json<Alert>> {
-    // TODO: Implement get alert by ID
-    Err(AppError::NotFound("Alert not found".to_string()))
+    let alert = state.db.get_alert(id).await?
+        .ok_or(AppError::NotFound("Alert not found".to_string()))?;
+    
+    Ok(Json(alert))
 }
 
 /// Create a new alert
@@ -52,13 +54,17 @@ pub async fn create(
 
 /// Update an alert
 pub async fn update(
-    Extension(_state): Extension<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     _user: AuthUser,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<UpdateAlertRequest>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateAlertRequest>,
 ) -> Result<Json<Alert>> {
-    // TODO: Implement update
-    Err(AppError::NotFound("Alert not found".to_string()))
+    let _ = state.db.get_alert(id).await?
+        .ok_or(AppError::NotFound("Alert not found".to_string()))?;
+    
+    let alert = state.db.update_alert(id, req).await?;
+    
+    Ok(Json(alert))
 }
 
 /// Resolve an alert

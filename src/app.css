@@ -13,19 +13,19 @@
 		--card-foreground: 0 0% 95%;
 		--popover: 240 10% 6%;
 		--popover-foreground: 0 0% 95%;
-		--primary: 187 100% 50%;
+		--primary: 28 100% 55%;
 		--primary-foreground: 240 10% 4%;
-		--secondary: 300 100% 50%;
+		--secondary: 24 100% 58%;
 		--secondary-foreground: 0 0% 100%;
 		--muted: 240 10% 15%;
 		--muted-foreground: 240 5% 65%;
-		--accent: 300 100% 50%;
+		--accent: 24 100% 58%;
 		--accent-foreground: 0 0% 100%;
 		--destructive: 350 100% 50%;
 		--destructive-foreground: 0 0% 100%;
 		--border: 240 10% 20%;
 		--input: 240 10% 20%;
-		--ring: 187 100% 50%;
+		--ring: 28 100% 55%;
 		--radius: 0.5rem;
 	}
 
@@ -36,19 +36,19 @@
 		--card-foreground: 240 10% 4%;
 		--popover: 0 0% 100%;
 		--popover-foreground: 240 10% 4%;
-		--primary: 187 100% 40%;
+		--primary: 28 100% 48%;
 		--primary-foreground: 0 0% 100%;
-		--secondary: 280 100% 60%;
+		--secondary: 24 95% 55%;
 		--secondary-foreground: 0 0% 100%;
 		--muted: 240 5% 90%;
 		--muted-foreground: 240 5% 35%;
-		--accent: 280 100% 60%;
+		--accent: 24 95% 55%;
 		--accent-foreground: 0 0% 100%;
 		--destructive: 350 100% 50%;
 		--destructive-foreground: 0 0% 100%;
 		--border: 240 5% 85%;
 		--input: 240 5% 85%;
-		--ring: 187 100% 40%;
+		--ring: 28 100% 48%;
 	}
 }
 
@@ -107,7 +107,7 @@
 		content: '';
 		@apply absolute inset-0 rounded-lg;
 		padding: 1px;
-		background: linear-gradient(135deg, #00d9ff, #ff00ff);
+		background: linear-gradient(135deg, #ff8a12, #ff6b35);
 		-webkit-mask: 
 			linear-gradient(#fff 0 0) content-box, 
 			linear-gradient(#fff 0 0);
@@ -127,23 +127,23 @@
 	}
 
 	.text-glow-blue {
-		text-shadow: 0 0 10px #00d9ff, 0 0 20px rgba(0, 217, 255, 0.5);
+		text-shadow: 0 0 10px #ff8a12, 0 0 20px rgba(255, 138, 18, 0.5);
 	}
 
 	.text-glow-purple {
-		text-shadow: 0 0 10px #ff00ff, 0 0 20px rgba(255, 0, 255, 0.5);
+		text-shadow: 0 0 10px #ff6b35, 0 0 20px rgba(255, 107, 53, 0.5);
 	}
 
 	/* Cyber button style */
 	.cyber-button {
 		@apply relative px-6 py-2 font-semibold text-white overflow-hidden;
-		background: linear-gradient(135deg, #00d9ff 0%, #0099cc 100%);
+		background: linear-gradient(135deg, #ff8a12 0%, #d95f00 100%);
 		clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 		transition: all 0.3s ease;
 	}
 
 	.cyber-button:hover {
-		box-shadow: 0 0 20px rgba(0, 217, 255, 0.6);
+		box-shadow: 0 0 20px rgba(255, 138, 18, 0.6);
 		transform: translateY(-2px);
 	}
 
@@ -172,7 +172,7 @@
 
 	.status-warning {
 		@apply bg-neon-yellow;
-		box-shadow: 0 0 8px #ffaa00;
+		box-shadow: 0 0 8px #ff8a12;
 	}
 
 	.status-error {
@@ -200,8 +200,8 @@
 	.cyber-bg {
 		background-color: hsl(var(--background));
 		background-image: 
-			linear-gradient(rgba(0, 217, 255, 0.03) 1px, transparent 1px),
-			linear-gradient(90deg, rgba(0, 217, 255, 0.03) 1px, transparent 1px);
+			linear-gradient(rgba(255, 138, 18, 0.03) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(255, 138, 18, 0.03) 1px, transparent 1px);
 		background-size: 50px 50px;
 	}
 
@@ -212,7 +212,7 @@
 
 	.module-card:hover {
 		@apply border-primary/50;
-		box-shadow: 0 0 30px rgba(0, 217, 255, 0.1);
+		box-shadow: 0 0 30px rgba(255, 138, 18, 0.14);
 		transform: translateY(-2px);
 	}
 
@@ -246,7 +246,7 @@
 	.gradient-border {
 		@apply relative;
 		background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
-					linear-gradient(135deg, #00d9ff, #ff00ff, #00d9ff) border-box;
+					linear-gradient(135deg, #ff8a12, #ff6b35, #ff8a12) border-box;
 		border: 1px solid transparent;
 		background-size: 100% 100%, 200% 200%;
 		animation: gradient-shift 4s linear infinite;
@@ -261,7 +261,7 @@
 	/* Hexagon pattern background */
 	.hex-pattern {
 		background-color: hsl(var(--background));
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%2300d9ff' fill-opacity='0.02'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23ff8a12' fill-opacity='0.02'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 	}
 }
 

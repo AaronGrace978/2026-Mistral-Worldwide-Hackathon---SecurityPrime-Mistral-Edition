@@ -20,31 +20,20 @@ pub async fn summary(
 
 /// Get threat report
 pub async fn threat_report(
-    Extension(_state): Extension<Arc<AppState>>,
-    _user: AuthUser,
+    Extension(state): Extension<Arc<AppState>>,
+    user: AuthUser,
 ) -> Result<Json<ThreatReport>> {
-    // TODO: Implement threat report aggregation
-    let now = chrono::Utc::now();
+    let report = state.db.get_threat_report(user.organization_id).await?;
     
-    Ok(Json(ThreatReport {
-        period_start: now - chrono::Duration::days(30),
-        period_end: now,
-        total_threats: 0,
-        by_severity: vec![],
-        by_type: vec![],
-        top_affected_endpoints: vec![],
-    }))
+    Ok(Json(report))
 }
 
 /// Get compliance report
 pub async fn compliance_report(
-    Extension(_state): Extension<Arc<AppState>>,
-    _user: AuthUser,
+    Extension(state): Extension<Arc<AppState>>,
+    user: AuthUser,
 ) -> Result<Json<serde_json::Value>> {
-    // TODO: Implement compliance report
-    Ok(Json(serde_json::json!({
-        "status": "compliant",
-        "checks": [],
-        "score": 0
-    })))
+    let report = state.db.get_compliance_report(user.organization_id).await?;
+    
+    Ok(Json(report))
 }

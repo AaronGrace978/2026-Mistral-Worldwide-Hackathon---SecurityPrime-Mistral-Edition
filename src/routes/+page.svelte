@@ -8,15 +8,22 @@
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
-	import { 
-		Shield, 
-		Flame, 
-		Lock, 
-		RefreshCw, 
+	import {
+		Shield,
+		Flame,
+		Lock,
+		RefreshCw,
 		Activity,
 		Cpu,
 		HardDrive,
-		Wifi
+		Wifi,
+		Bot,
+		Sparkles,
+		Zap,
+		ArrowRight,
+		Brain,
+		Eye,
+		Rocket
 	} from 'lucide-svelte';
 	import * as api from '$lib/api';
 
@@ -55,7 +62,6 @@
 		alerts.remove(event.detail.id);
 	}
 
-	// Get module status for status cards
 	$: scannerStatus = $moduleStatuses.find(m => m.name === 'scanner');
 	$: firewallStatus = $moduleStatuses.find(m => m.name === 'firewall');
 	$: encryptionStatus = $moduleStatuses.find(m => m.name === 'encryption');
@@ -67,19 +73,22 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<!-- Header -->
+	<!-- Hero Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold tracking-tight text-foreground">
+			<h1 class="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
 				Security Dashboard
+				<Badge variant="outline" class="text-[10px] font-mono tracking-wider border-orange-500/40 text-orange-400">
+					MISTRAL-POWERED
+				</Badge>
 			</h1>
 			<p class="text-muted-foreground mt-1">
-				Monitor your system's security status in real-time
+				Real-time system protection with AI-driven threat analysis
 			</p>
 		</div>
-		<Button 
-			variant="outline" 
-			class="gap-2" 
+		<Button
+			variant="outline"
+			class="gap-2"
 			on:click={refreshData}
 			disabled={loading}
 		>
@@ -168,6 +177,50 @@
 			</div>
 		</div>
 
+		<!-- AI Insight Card -->
+		<div class="col-span-12">
+			<Card variant="glass" class="border-orange-500/20 overflow-hidden relative">
+				<div class="absolute inset-0 opacity-[0.03] pointer-events-none"
+					style="background: radial-gradient(circle at 20% 50%, #ff7300 0%, transparent 50%), radial-gradient(circle at 80% 50%, #ff9900 0%, transparent 50%);"
+				/>
+				<CardContent class="py-5">
+					<div class="flex items-center gap-6">
+						<div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex-shrink-0">
+							<Brain class="w-7 h-7 text-white" />
+						</div>
+						<div class="flex-1 min-w-0">
+							<div class="flex items-center gap-2 mb-1">
+								<h3 class="text-base font-semibold">Mistral Security Copilot</h3>
+								<Badge variant="outline" class="text-[9px] border-orange-500/30 text-orange-400 font-mono">AI</Badge>
+							</div>
+							<p class="text-sm text-muted-foreground">
+								Multi-model AI analysis using Mistral Large for deep threat assessment, Ministral for fast triage,
+								Devstral for remediation scripting, and Pixtral for visual inspection.
+							</p>
+						</div>
+						<div class="flex items-center gap-3 flex-shrink-0">
+							<div class="text-right mr-2">
+								<div class="flex items-center gap-2 text-xs text-muted-foreground">
+									<div class="flex -space-x-1">
+										<div class="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center"><Brain class="w-2.5 h-2.5 text-orange-400" /></div>
+										<div class="w-5 h-5 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center"><Zap class="w-2.5 h-2.5 text-yellow-400" /></div>
+										<div class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center"><Sparkles class="w-2.5 h-2.5 text-emerald-400" /></div>
+										<div class="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center"><Eye class="w-2.5 h-2.5 text-violet-400" /></div>
+									</div>
+									<span>4 models available</span>
+								</div>
+							</div>
+							<Button variant="cyber" class="gap-2" href="/agent">
+								<Bot class="w-4 h-4" />
+								Open Copilot
+								<ArrowRight class="w-4 h-4" />
+							</Button>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
+
 		<!-- Activity Log -->
 		<div class="col-span-12 lg:col-span-6">
 			<ActivityLog activities={$activities} maxHeight="350px" />
@@ -175,8 +228,8 @@
 
 		<!-- Threat Alerts -->
 		<div class="col-span-12 lg:col-span-6">
-			<ThreatAlert 
-				alerts={$alerts} 
+			<ThreatAlert
+				alerts={$alerts}
 				maxHeight="350px"
 				on:resolve={handleResolveAlert}
 				on:dismiss={handleDismissAlert}
@@ -201,6 +254,14 @@
 				<Button variant="outline" class="gap-2" href="/encryption">
 					Encrypt Files
 				</Button>
+				<Button variant="outline" class="gap-2" href="/agent">
+					<Bot class="w-4 h-4" />
+					AI Security Audit
+				</Button>
+				<Button variant="outline" class="gap-2" href="/flagship">
+					<Rocket class="w-4 h-4" />
+					Flagship Program
+				</Button>
 				<Button variant="outline" class="gap-2" href="/settings">
 					Configure Settings
 				</Button>
@@ -208,4 +269,3 @@
 		</CardContent>
 	</Card>
 </div>
-

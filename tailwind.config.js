@@ -47,24 +47,24 @@ export default {
 					DEFAULT: 'hsl(var(--card) / <alpha-value>)',
 					foreground: 'hsl(var(--card-foreground) / <alpha-value>)'
 				},
-				// Cyberpunk specific colors
+				// Mistral-inspired colors
 				cyber: {
-					blue: '#00d9ff',
-					'blue-dark': '#0099cc',
-					purple: '#ff00ff',
-					'purple-dark': '#cc00cc',
-					pink: '#ff2a6d',
-					yellow: '#fcee0a',
-					green: '#00ff88',
+					blue: '#ff7a18',
+					'blue-dark': '#d95f00',
+					purple: '#ff9f43',
+					'purple-dark': '#d97706',
+					pink: '#ff6b35',
+					yellow: '#ffb347',
+					green: '#22c55e',
 					red: '#ff0044',
-					orange: '#ffaa00'
+					orange: '#ff8a12'
 				},
 				neon: {
-					blue: '#00d9ff',
-					purple: '#a855f7',
-					pink: '#ec4899',
+					blue: '#ff8a12',
+					purple: '#ff9f43',
+					pink: '#ff6b35',
 					green: '#22c55e',
-					yellow: '#eab308',
+					yellow: '#f59e0b',
 					red: '#ef4444'
 				}
 			},
@@ -79,13 +79,13 @@ export default {
 				cyber: ['Orbitron', 'sans-serif']
 			},
 			boxShadow: {
-				'neon-blue': '0 0 5px #00d9ff, 0 0 20px rgba(0, 217, 255, 0.3)',
-				'neon-purple': '0 0 5px #ff00ff, 0 0 20px rgba(255, 0, 255, 0.3)',
+				'neon-blue': '0 0 5px #ff8a12, 0 0 20px rgba(255, 138, 18, 0.35)',
+				'neon-purple': '0 0 5px #ff9f43, 0 0 20px rgba(255, 159, 67, 0.3)',
 				'neon-green': '0 0 5px #00ff88, 0 0 20px rgba(0, 255, 136, 0.3)',
 				'neon-red': '0 0 5px #ff0044, 0 0 20px rgba(255, 0, 68, 0.3)',
-				'neon-yellow': '0 0 5px #ffaa00, 0 0 20px rgba(255, 170, 0, 0.3)',
-				glow: '0 0 15px rgba(0, 217, 255, 0.5)',
-				'glow-lg': '0 0 30px rgba(0, 217, 255, 0.4)',
+				'neon-yellow': '0 0 5px #ff8a12, 0 0 20px rgba(255, 138, 18, 0.35)',
+				glow: '0 0 15px rgba(255, 138, 18, 0.45)',
+				'glow-lg': '0 0 30px rgba(255, 138, 18, 0.35)',
 				glass: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
 			},
 			animation: {
@@ -109,10 +109,10 @@ export default {
 				},
 				'pulse-glow': {
 					'0%, 100%': { 
-						boxShadow: '0 0 5px #00d9ff, 0 0 10px rgba(0, 217, 255, 0.3)'
+						boxShadow: '0 0 5px #ff8a12, 0 0 10px rgba(255, 138, 18, 0.3)'
 					},
 					'50%': { 
-						boxShadow: '0 0 10px #00d9ff, 0 0 30px rgba(0, 217, 255, 0.5)'
+						boxShadow: '0 0 10px #ff8a12, 0 0 30px rgba(255, 138, 18, 0.5)'
 					}
 				},
 				'scan-line': {
@@ -138,10 +138,10 @@ export default {
 			},
 			backgroundImage: {
 				'cyber-grid': `
-					linear-gradient(rgba(0, 217, 255, 0.03) 1px, transparent 1px),
-					linear-gradient(90deg, rgba(0, 217, 255, 0.03) 1px, transparent 1px)
+					linear-gradient(rgba(255, 138, 18, 0.03) 1px, transparent 1px),
+					linear-gradient(90deg, rgba(255, 138, 18, 0.03) 1px, transparent 1px)
 				`,
-				'cyber-gradient': 'linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(255, 0, 255, 0.1) 100%)',
+				'cyber-gradient': 'linear-gradient(135deg, rgba(255, 138, 18, 0.12) 0%, rgba(255, 107, 53, 0.12) 100%)',
 				'dark-gradient': 'linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 100%)'
 			},
 			backgroundSize: {

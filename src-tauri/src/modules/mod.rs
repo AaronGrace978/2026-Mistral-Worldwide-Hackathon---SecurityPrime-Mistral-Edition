@@ -5,6 +5,7 @@ pub mod agent;
 pub mod compliance;
 pub mod encryption;
 pub mod firewall;
+pub mod flagship;
 pub mod history;
 pub mod isolation;
 pub mod management;

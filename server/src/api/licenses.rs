@@ -14,13 +14,17 @@ use crate::AppState;
 
 /// List licenses
 pub async fn list(
-    Extension(_state): Extension<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     user: AuthUser,
 ) -> Result<Json<Vec<License>>> {
     require_role(&user, UserRole::MspAdmin)?;
     
-    // TODO: Implement list licenses
-    Ok(Json(vec![]))
+    let licenses = match user.role {
+        UserRole::SuperAdmin => state.db.list_licenses(None).await?,
+        _ => state.db.list_licenses(user.organization_id).await?,
+    };
+    
+    Ok(Json(licenses))
 }
 
 /// Get a single license
@@ -49,13 +53,14 @@ pub async fn create(
 
 /// Revoke a license
 pub async fn revoke(
-    Extension(_state): Extension<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     user: AuthUser,
-    Path(_id): Path<Uuid>,
+    Path(id): Path<Uuid>,
 ) -> Result<Json<()>> {
     require_role(&user, UserRole::SuperAdmin)?;
     
-    // TODO: Implement revoke
+    state.db.revoke_license(id).await?;
+    
     Ok(Json(()))
 }
 

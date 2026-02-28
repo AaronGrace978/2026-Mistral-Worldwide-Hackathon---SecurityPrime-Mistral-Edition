@@ -380,6 +380,14 @@ export interface NetworkStats {
 	suspicious_connections: number;
 }
 
+export interface LittleSnitchStatus {
+	supported: boolean;
+	installed: boolean;
+	app_path: string | null;
+	docs_url: string;
+	status_message: string;
+}
+
 // Settings types
 export interface ModulesEnabled {
 	scanner: boolean;
@@ -591,6 +599,10 @@ export async function getNetworkConnections(): Promise<NetworkConnection[]> {
 
 export async function getNetworkStats(): Promise<NetworkStats> {
 	return safeInvoke<NetworkStats>('get_network_stats');
+}
+
+export async function getLittleSnitchStatus(): Promise<LittleSnitchStatus> {
+	return safeInvoke<LittleSnitchStatus>('get_little_snitch_status');
 }
 
 // ============================================================================
@@ -1371,6 +1383,99 @@ export async function verifyLogIntegrity(): Promise<boolean> {
 
 export async function getSecurityHardeningDashboard(): Promise<HardeningMetrics> {
 	return safeInvoke<HardeningMetrics>('get_security_hardening_dashboard');
+}
+
+// ============================================================================
+// Flagship Enhancements API
+// ============================================================================
+
+export interface AutonomousResponsePlaybook {
+	id: string;
+	name: string;
+	description: string;
+	enabled: boolean;
+	trigger_score: number;
+	severity_threshold: string;
+	actions: string[];
+	last_executed: string | null;
+}
+
+export interface PlaybookDryRunResult {
+	playbook_id: string;
+	target: string;
+	actions_preview: string[];
+	estimated_impact: string;
+	recommendation: string;
+}
+
+export interface ExposureItem {
+	id: string;
+	category: string;
+	asset: string;
+	severity: Severity | string;
+	status: string;
+	recommended_action: string;
+}
+
+export interface AttackSurfaceSnapshot {
+	overall_exposure_score: number;
+	open_exposures: number;
+	critical_exposures: number;
+	last_updated: string;
+	items: ExposureItem[];
+}
+
+export interface RulePack {
+	id: string;
+	name: string;
+	version: string;
+	publisher: string;
+	signature_status: string;
+	last_verified: string;
+	installed: boolean;
+}
+
+export interface SignedRulePackStatus {
+	enforcement_enabled: boolean;
+	last_sync: string;
+	packs: RulePack[];
+}
+
+export interface RulePackVerificationResult {
+	pack_id: string;
+	verified: boolean;
+	signer: string;
+	details: string;
+}
+
+export async function getAutonomousResponsePlaybooks(): Promise<AutonomousResponsePlaybook[]> {
+	return safeInvoke<AutonomousResponsePlaybook[]>('get_autonomous_response_playbooks');
+}
+
+export async function runAutonomousResponseDryRun(
+	playbookId: string,
+	target: string
+): Promise<PlaybookDryRunResult> {
+	return safeInvoke<PlaybookDryRunResult>('run_autonomous_response_dry_run', {
+		playbookId,
+		target
+	});
+}
+
+export async function getAttackSurfaceSnapshot(): Promise<AttackSurfaceSnapshot> {
+	return safeInvoke<AttackSurfaceSnapshot>('get_attack_surface_snapshot');
+}
+
+export async function refreshAttackSurfaceSnapshot(): Promise<AttackSurfaceSnapshot> {
+	return safeInvoke<AttackSurfaceSnapshot>('refresh_attack_surface_snapshot');
+}
+
+export async function getSignedRulePackStatus(): Promise<SignedRulePackStatus> {
+	return safeInvoke<SignedRulePackStatus>('get_signed_rule_pack_status');
+}
+
+export async function verifyRulePackSignature(packId: string): Promise<RulePackVerificationResult> {
+	return safeInvoke<RulePackVerificationResult>('verify_rule_pack_signature', { packId });
 }
 
 // ============================================================================

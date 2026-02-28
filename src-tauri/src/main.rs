@@ -123,6 +123,7 @@ fn main() {
             // Network commands
             cmd::get_network_connections,
             cmd::get_network_stats,
+            cmd::get_little_snitch_status,
             // Settings commands
             cmd::get_settings,
             cmd::update_settings,
@@ -265,6 +266,13 @@ fn main() {
             modules::reporting::disconnect_msp_server,
             modules::reporting::send_heartbeat_now,
             modules::reporting::report_security_event,
+            // Flagship enhancement commands
+            modules::flagship::get_autonomous_response_playbooks,
+            modules::flagship::run_autonomous_response_dry_run,
+            modules::flagship::get_attack_surface_snapshot,
+            modules::flagship::refresh_attack_surface_snapshot,
+            modules::flagship::get_signed_rule_pack_status,
+            modules::flagship::verify_rule_pack_signature,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Cyber Security Prime");

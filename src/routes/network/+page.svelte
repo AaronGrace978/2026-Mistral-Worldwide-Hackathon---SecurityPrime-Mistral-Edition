@@ -16,11 +16,14 @@
 		Globe,
 		Wifi,
 		Ban,
-		CheckCircle
+		CheckCircle,
+		ShieldCheck,
+		ExternalLink
 	} from 'lucide-svelte';
 
 	let connections: api.NetworkConnection[] = [];
 	let stats: api.NetworkStats | null = null;
+	let littleSnitchStatus: api.LittleSnitchStatus | null = null;
 	let loading = true;
 	let refreshInterval: ReturnType<typeof setInterval>;
 
@@ -36,9 +39,10 @@
 
 	async function loadData() {
 		try {
-			[connections, stats] = await Promise.all([
+			[connections, stats, littleSnitchStatus] = await Promise.all([
 				api.getNetworkConnections(),
-				api.getNetworkStats()
+				api.getNetworkStats(),
+				api.getLittleSnitchStatus()
 			]);
 		} catch (error) {
 			console.error('Failed to load network data:', error);
@@ -151,6 +155,43 @@
 					</Card>
 				</div>
 			</div>
+
+			{#if littleSnitchStatus?.supported}
+				<div class="col-span-12">
+					<Card variant="glass" class="border-orange-400/40">
+						<CardHeader>
+							<div class="flex items-center justify-between gap-3">
+								<div>
+									<CardTitle class="flex items-center gap-2">
+										<ShieldCheck class="w-5 h-5 text-orange-400" />
+										Little Snitch Ready (macOS)
+									</CardTitle>
+									<CardDescription>
+										Use Little Snitch as a process-level outbound visibility companion.
+									</CardDescription>
+								</div>
+								<Badge variant={littleSnitchStatus.installed ? 'success' : 'warning'}>
+									{littleSnitchStatus.installed ? 'Installed' : 'Not Installed'}
+								</Badge>
+							</div>
+						</CardHeader>
+						<CardContent class="space-y-3">
+							<p class="text-sm text-muted-foreground">{littleSnitchStatus.status_message}</p>
+							<div class="flex flex-wrap items-center gap-2">
+								{#if littleSnitchStatus.app_path}
+									<Badge variant="outline">Detected at: {littleSnitchStatus.app_path}</Badge>
+								{/if}
+								<a href={littleSnitchStatus.docs_url} target="_blank" rel="noopener noreferrer">
+									<Button variant="outline" size="sm" class="gap-2">
+										<ExternalLink class="w-4 h-4" />
+										Open Little Snitch
+									</Button>
+								</a>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			{/if}
 
 			<!-- Connections List -->
 			<div class="col-span-12">

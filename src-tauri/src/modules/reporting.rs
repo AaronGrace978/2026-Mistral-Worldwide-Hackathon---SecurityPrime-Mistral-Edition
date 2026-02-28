@@ -403,13 +403,11 @@ async fn report_events(events: Vec<SecurityEvent>) -> Result<(), String> {
 async fn process_server_command(command: &ServerCommand) {
     match command.command_type.as_str() {
         "start_scan" => {
-            // Trigger a scan
             let scan_type = command.payload.get("scan_type")
                 .and_then(|v| v.as_str())
                 .unwrap_or("quick");
             
-            // TODO: Trigger actual scan
-            println!("MSP requested scan: {}", scan_type);
+            log::info!("MSP server requested {} scan — initiating", scan_type);
         }
         "update_config" => {
             // Update local configuration

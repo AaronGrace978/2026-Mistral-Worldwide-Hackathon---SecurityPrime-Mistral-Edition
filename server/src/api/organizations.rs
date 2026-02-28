@@ -75,14 +75,15 @@ pub async fn update(
     Extension(state): Extension<Arc<AppState>>,
     user: AuthUser,
     Path(id): Path<Uuid>,
-    Json(_req): Json<UpdateOrganizationRequest>,
+    Json(req): Json<UpdateOrganizationRequest>,
 ) -> Result<Json<Organization>> {
     can_access_organization(&user, id)?;
     require_role(&user, UserRole::MspAdmin)?;
     
-    // TODO: Implement update
-    let org = state.db.get_organization(id).await?
+    let _ = state.db.get_organization(id).await?
         .ok_or(AppError::NotFound("Organization not found".to_string()))?;
+    
+    let org = state.db.update_organization(id, req).await?;
     
     Ok(Json(org))
 }
@@ -95,9 +96,10 @@ pub async fn delete(
 ) -> Result<Json<()>> {
     require_role(&user, UserRole::SuperAdmin)?;
     
-    // TODO: Implement soft delete
     let _ = state.db.get_organization(id).await?
         .ok_or(AppError::NotFound("Organization not found".to_string()))?;
+    
+    state.db.soft_delete_organization(id).await?;
     
     Ok(Json(()))
 }

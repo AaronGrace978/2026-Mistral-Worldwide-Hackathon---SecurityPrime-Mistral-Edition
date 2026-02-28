@@ -1,15 +1,15 @@
 {
   "ollama_cloud": {
     "enabled": true,
-    "api_key": "16a43cfd76114a4bb4fdcc6b19243382.Vwk6ornm9vX4rsn0U6hb94za",
+    "api_key": "",
     "api_key_env": "OLLAMA_CLOUD_API_KEY",
     "base_url": "https://ollama.com",
     "timeout": 300,
     "max_retries": 3,
     "retry_delay": 2.0,
     "cost_limits": {
-      "max_cost_per_request": 0.10,
-      "max_daily_cost": 5.00,
+      "max_cost_per_request": 0.1,
+      "max_daily_cost": 5.0,
       "currency": "USD"
     },
     "usage_tracking": {
@@ -20,73 +20,77 @@
     }
   },
   "cloud_models": {
-    "gemma3": {
-      "enabled": true,
-      "priority": 1,
-      "description": "Google's most capable model that runs on a single GPU",
-      "sizes": ["270m", "1b", "4b", "12b", "27b"],
-      "pulls": "28.8M",
-      "best_for": ["vision", "general_purpose", "efficient", "security_analysis"],
-      "special_features": ["vision", "cloud"],
-      "default_size": "27b"
-    },
-    "qwen3-coder": {
-      "enabled": true,
-      "priority": 2,
-      "description": "Alibaba's performant long context models for agentic and coding tasks",
-      "sizes": ["30b", "480b"],
-      "context_window": 1500000,
-      "pulls": "10",
-      "best_for": ["agentic_tasks", "coding", "long_context", "tools", "security_scripting"],
-      "special_features": ["tools", "cloud", "1.5M_context"],
-      "default_size": "480b"
-    },
-    "deepseek-v3.1": {
-      "enabled": true,
-      "priority": 3,
-      "description": "DeepSeek-V3.1-Terminus - hybrid model supporting thinking and non-thinking modes",
-      "sizes": ["671b"],
-      "pulls": "221.8K",
-      "best_for": ["thinking", "tools", "reasoning", "agent_tasks", "threat_analysis"],
-      "special_features": ["tools", "thinking", "cloud"],
-      "default_size": "671b"
-    },
     "mistral-large-3": {
       "enabled": true,
-      "priority": 4,
-      "description": "General-purpose multimodal MoE model for production-grade tasks",
-      "pulls": "6,079",
-      "best_for": ["production", "enterprise", "multimodal", "security"],
-      "special_features": ["cloud"],
+      "priority": 1,
+      "description": "General-purpose production model for rich security analysis",
+      "sizes": [
+        "675b"
+      ],
+      "best_for": [
+        "general_purpose",
+        "security_analysis",
+        "threat_analysis",
+        "production"
+      ],
+      "special_features": [
+        "cloud"
+      ],
       "default_size": "675b"
-    },
-    "gpt-oss": {
-      "enabled": true,
-      "priority": 5,
-      "description": "OpenAI's open-weight models for powerful reasoning",
-      "sizes": ["20b", "120b"],
-      "pulls": "5.5M",
-      "best_for": ["reasoning", "agentic_tasks", "tools", "thinking"],
-      "special_features": ["tools", "thinking", "cloud"],
-      "default_size": "120b"
-    },
-    "kimi-k2": {
-      "enabled": true,
-      "priority": 6,
-      "description": "State-of-the-art MoE language model with significant improvements on coding agent tasks",
-      "pulls": "22.9K",
-      "best_for": ["coding_agents", "benchmarks", "MoE"],
-      "special_features": ["cloud"]
     },
     "devstral-small-2": {
       "enabled": true,
-      "priority": 7,
-      "description": "24B model excels at using tools to explore codebases",
-      "sizes": ["24b"],
-      "pulls": "53.7K",
-      "best_for": ["codebase_exploration", "file_editing", "software_agents", "security_scanning"],
-      "special_features": ["vision", "tools", "cloud"],
+      "priority": 2,
+      "description": "Tool-using Mistral-family model for coding and remediation suggestions",
+      "sizes": [
+        "24b"
+      ],
+      "best_for": [
+        "coding",
+        "security_scripting",
+        "agentic_tasks",
+        "tools"
+      ],
+      "special_features": [
+        "tools",
+        "cloud"
+      ],
       "default_size": "24b"
+    },
+    "ministral": {
+      "enabled": true,
+      "priority": 3,
+      "description": "Fast lightweight Mistral-family model for quick triage",
+      "sizes": [
+        "8b"
+      ],
+      "best_for": [
+        "efficient",
+        "simple_questions",
+        "triage"
+      ],
+      "special_features": [
+        "cloud"
+      ],
+      "default_size": "8b"
+    },
+    "pixtral": {
+      "enabled": true,
+      "priority": 4,
+      "description": "Mistral-family multimodal model for image-based investigation",
+      "sizes": [
+        "12b"
+      ],
+      "best_for": [
+        "vision",
+        "multimodal",
+        "security_analysis"
+      ],
+      "special_features": [
+        "vision",
+        "cloud"
+      ],
+      "default_size": "12b"
     }
   },
   "routing_strategy": {
@@ -99,13 +103,13 @@
         "preferred": "cloud",
         "fallback": "local",
         "max_tokens": 1024,
-        "model": "gemma3:27b"
+        "model": "ministral:8b"
       },
       "security_analysis": {
         "preferred": "cloud",
         "fallback": "local",
         "max_tokens": 4096,
-        "model": "deepseek-v3.1:671b"
+        "model": "mistral-large-3:675b"
       },
       "threat_detection": {
         "preferred": "cloud",
@@ -117,22 +121,22 @@
         "preferred": "cloud",
         "fallback": "local",
         "max_tokens": 4096,
-        "model": "qwen3-coder:480b"
+        "model": "devstral-small-2:24b"
       }
     }
   },
   "local_models": {
-    "qwen2.5-coder:7b": {
+    "mistral:7b": {
       "enabled": true,
       "priority": 1,
-      "connector": "qwen",
-      "description": "Qwen 2.5 Coder 7B - fast coding assistant"
+      "connector": "mistral",
+      "description": "Local Mistral model for offline fallback"
     },
-    "llama3:8b": {
+    "mixtral:8x7b": {
       "enabled": true,
       "priority": 2,
-      "connector": "llama",
-      "description": "Llama 3 8B - general purpose"
+      "connector": "mixtral",
+      "description": "Local Mixtral model for heavier fallback analysis"
     }
   },
   "performance_tracking": {
@@ -143,7 +147,7 @@
     "retention_days": 30
   },
   "security": {
-    "api_key_encryption": false,
+    "api_key_encryption": true,
     "request_logging": true,
     "response_logging": false,
     "data_retention": {

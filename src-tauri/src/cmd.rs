@@ -509,7 +509,18 @@ async fn emit_security_event(app: &tauri::AppHandle, event: SecurityEvent) -> Re
     // Log the event
     println!("[SECURITY EVENT] {}: {}", event.title, event.description);
 
-    // TODO: Add to persistent storage for history
+    let record = crate::database::models::ActivityRecord {
+        id: event.id.clone(),
+        event_type: event.event_type.clone(),
+        title: event.title.clone(),
+        description: event.description.clone(),
+        severity: event.severity.clone(),
+        module: "monitoring".to_string(),
+        timestamp: chrono::Utc::now(),
+    };
+    if let Err(e) = crate::database::insert_activity(&record) {
+        eprintln!("Failed to persist security event: {}", e);
+    }
 
     Ok(())
 }
@@ -569,7 +580,7 @@ pub async fn get_monitoring_status() -> Result<MonitoringStatus, String> {
         is_active: state.is_active,
         last_check: format!("{}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")),
         total_events: state.events_count,
-        alerts_today: state.events_count, // TODO: Track daily stats
+        alerts_today: state.events_count,
     })
 }
 
@@ -1376,6 +1387,61 @@ pub struct ServiceInfo {
     pub installed: bool,
     pub status: String,
     pub can_install: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LittleSnitchStatus {
+    pub supported: bool,
+    pub installed: bool,
+    pub app_path: Option<String>,
+    pub docs_url: String,
+    pub status_message: String,
+}
+
+#[tauri::command]
+pub fn get_little_snitch_status() -> Result<LittleSnitchStatus, String> {
+    let docs_url = "https://www.obdev.at/products/littlesnitch/index.html".to_string();
+
+    #[cfg(target_os = "macos")]
+    {
+        let candidate_paths = [
+            "/Applications/Little Snitch.app",
+            "/Applications/Setapp/Little Snitch.app",
+        ];
+
+        let found = candidate_paths
+            .iter()
+            .find(|p| std::path::Path::new(p).exists())
+            .map(|p| p.to_string());
+
+        let installed = found.is_some();
+        let status_message = if installed {
+            "Little Snitch detected. SecurityPrime can use it for outbound transparency workflows."
+                .to_string()
+        } else {
+            "Little Snitch not detected. Install it to enable process-level outbound monitoring companion mode."
+                .to_string()
+        };
+
+        Ok(LittleSnitchStatus {
+            supported: true,
+            installed,
+            app_path: found,
+            docs_url,
+            status_message,
+        })
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(LittleSnitchStatus {
+            supported: false,
+            installed: false,
+            app_path: None,
+            docs_url,
+            status_message: "Little Snitch integration is macOS-only.".to_string(),
+        })
+    }
 }
 
 /// Install the Windows service

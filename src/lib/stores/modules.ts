@@ -19,7 +19,8 @@ import {
 	Scale,
 	Box,
 	AlertTriangle,
-	Zap
+	Zap,
+	Rocket
 } from 'lucide-svelte';
 
 export interface ModuleInfo {
@@ -43,6 +44,15 @@ export const allModules: ModuleInfo[] = [
 		route: '/',
 		category: 'system',
 		color: 'cyber-blue'
+	},
+	{
+		id: 'flagship',
+		name: 'Flagship',
+		description: 'Flagship enhancement control center',
+		icon: Rocket,
+		route: '/flagship',
+		category: 'system',
+		color: 'neon-pink'
 	},
 	{
 		id: 'scanner',
@@ -100,12 +110,12 @@ export const allModules: ModuleInfo[] = [
 	},
 	{
 		id: 'agent',
-		name: 'AI Assistant',
-		description: 'AI-powered security analysis and recommendations',
+		name: 'Mistral Copilot',
+		description: 'Multi-model AI security analysis powered by Mistral',
 		icon: Bot,
 		route: '/agent',
 		category: 'ai',
-		color: 'cyber-purple'
+		color: 'cyber-orange'
 	},
 	{
 		id: 'analytics',

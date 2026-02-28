@@ -74,28 +74,35 @@ pub async fn create(
 
 /// Update a user
 pub async fn update(
-    Extension(_state): Extension<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     user: AuthUser,
     Path(id): Path<Uuid>,
-    Json(_req): Json<UpdateUserRequest>,
+    Json(req): Json<UpdateUserRequest>,
 ) -> Result<Json<UserPublic>> {
-    // Users can update themselves, admins can update others
     if user.id != id {
         require_role(&user, UserRole::MspAdmin)?;
     }
     
-    // TODO: Implement update
-    Err(AppError::NotFound("User not found".to_string()))
+    let _ = state.db.get_user_by_id(id).await?
+        .ok_or(AppError::NotFound("User not found".to_string()))?;
+    
+    let updated = state.db.update_user(id, req).await?;
+    
+    Ok(Json(updated.into()))
 }
 
 /// Delete a user
 pub async fn delete(
-    Extension(_state): Extension<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     user: AuthUser,
-    Path(_id): Path<Uuid>,
+    Path(id): Path<Uuid>,
 ) -> Result<Json<()>> {
     require_role(&user, UserRole::SuperAdmin)?;
     
-    // TODO: Implement soft delete
+    let _ = state.db.get_user_by_id(id).await?
+        .ok_or(AppError::NotFound("User not found".to_string()))?;
+    
+    state.db.soft_delete_user(id).await?;
+    
     Ok(Json(()))
 }

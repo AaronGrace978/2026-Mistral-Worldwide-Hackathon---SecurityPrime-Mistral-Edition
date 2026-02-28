@@ -383,10 +383,30 @@ fn run_quick_scan() -> Result<(), String> {
 }
 
 fn send_heartbeat() -> Result<(), String> {
-    // Check if MSP server is configured
-    if let Ok(Some(_server_url)) = crate::database::get_setting("msp_server_url") {
-        // TODO: Send heartbeat to MSP server
-        // This will be implemented in the agent-heartbeat todo
+    if let Ok(Some(server_url)) = crate::database::get_setting("msp_server_url") {
+        let hostname = hostname::get()
+            .map(|h| h.to_string_lossy().to_string())
+            .unwrap_or_else(|_| "unknown".to_string());
+        log::info!("Sending heartbeat to MSP server {} (host: {})", server_url, hostname);
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| e.to_string())?;
+
+        rt.block_on(async {
+            let client = reqwest::Client::new();
+            let _ = client
+                .post(format!("{}/api/v1/endpoints/heartbeat", server_url.trim_end_matches('/')))
+                .json(&serde_json::json!({
+                    "endpoint_id": hostname,
+                    "status": "healthy",
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                }))
+                .timeout(std::time::Duration::from_secs(10))
+                .send()
+                .await;
+        });
     }
     Ok(())
 }

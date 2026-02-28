@@ -1,13 +1,14 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Switch } from '$lib/components/ui/switch';
-	import { 
-		Bot, 
+	import { marked } from 'marked';
+	import {
+		Bot,
 		Send,
 		Loader2,
 		Server,
@@ -24,7 +25,15 @@
 		Cloud,
 		Eye,
 		EyeOff,
-		Save
+		Save,
+		Brain,
+		Cpu,
+		ImageIcon,
+		Code,
+		Shield,
+		AlertTriangle,
+		FolderSearch,
+		Terminal
 	} from 'lucide-svelte';
 
 	interface ModelInfo {
@@ -44,6 +53,8 @@
 		role: 'user' | 'assistant' | 'system';
 		content: string;
 		streaming?: boolean;
+		model?: string;
+		timestamp?: string;
 	}
 
 	interface StreamChunk {
@@ -66,6 +77,51 @@
 	let streamingEnabled = true;
 	let unlistenStream: UnlistenFn | null = null;
 	let unlistenDone: UnlistenFn | null = null;
+	let chatContainer: HTMLElement;
+	let activeModel = '';
+
+	marked.setOptions({
+		breaks: true,
+		gfm: true
+	});
+
+	const MODEL_META: Record<string, { icon: typeof Brain; label: string; color: string; desc: string }> = {
+		'mistral-large': { icon: Brain, label: 'Mistral Large', color: 'text-orange-400', desc: 'Deep security analysis' },
+		'ministral': { icon: Zap, label: 'Ministral', color: 'text-yellow-400', desc: 'Fast triage' },
+		'devstral': { icon: Code, label: 'Devstral', color: 'text-emerald-400', desc: 'Code & remediation' },
+		'pixtral': { icon: ImageIcon, label: 'Pixtral', color: 'text-violet-400', desc: 'Visual analysis' },
+		'mixtral': { icon: Cpu, label: 'Mixtral', color: 'text-blue-400', desc: 'MoE reasoning' },
+		'codestral': { icon: Terminal, label: 'Codestral', color: 'text-cyan-400', desc: 'Code generation' }
+	};
+
+	function getModelMeta(name: string) {
+		const lower = name.toLowerCase();
+		for (const [key, meta] of Object.entries(MODEL_META)) {
+			if (lower.includes(key)) return meta;
+		}
+		return { icon: Brain, label: name, color: 'text-orange-400', desc: 'Mistral model' };
+	}
+
+	$: mistralModels = (status?.available_models ?? []).filter((model) => {
+		const n = model.name.toLowerCase();
+		return n.includes('mistral') || n.includes('mixtral') || n.includes('ministral') ||
+			n.includes('codestral') || n.includes('devstral') || n.includes('pixtral');
+	});
+
+	function renderMarkdown(text: string): string {
+		try {
+			return marked.parse(text) as string;
+		} catch {
+			return text;
+		}
+	}
+
+	async function scrollToBottom() {
+		await tick();
+		if (chatContainer) {
+			chatContainer.scrollTop = chatContainer.scrollHeight;
+		}
+	}
 
 	onMount(async () => {
 		await checkStatus();
@@ -88,8 +144,9 @@
 		try {
 			await invoke('store_ollama_api_key', { apiKey: apiKey.trim() });
 			hasApiKey = true;
-			apiKey = ''; // Clear from memory
-			await checkStatus(); // Reconnect with new key
+			apiKey = '';
+			await invoke('reset_agent_client');
+			await checkStatus();
 		} catch (e) {
 			console.error('Failed to save API key:', e);
 		} finally {
@@ -102,6 +159,7 @@
 		try {
 			await invoke('delete_ollama_api_key');
 			hasApiKey = false;
+			await invoke('reset_agent_client');
 			await checkStatus();
 		} catch (e) {
 			console.error('Failed to delete API key:', e);
@@ -116,24 +174,22 @@
 	});
 
 	async function setupStreamListeners() {
-		// Listen for streaming chunks
 		unlistenStream = await listen<StreamChunk>('agent-stream', (event) => {
 			const chunk = event.payload;
-			
-			// Find the streaming message and append content
 			const lastIdx = messages.length - 1;
 			if (lastIdx >= 0 && messages[lastIdx].streaming) {
 				messages[lastIdx].content += chunk.content;
-				messages = [...messages]; // Trigger reactivity
+				if (chunk.model) activeModel = chunk.model;
+				messages = [...messages];
+				scrollToBottom();
 			}
 		});
 
-		// Listen for stream completion
-		unlistenDone = await listen<StreamChunk>('agent-stream-done', () => {
-			// Mark streaming as complete
+		unlistenDone = await listen<StreamChunk>('agent-stream-done', (event) => {
 			const lastIdx = messages.length - 1;
 			if (lastIdx >= 0 && messages[lastIdx].streaming) {
 				messages[lastIdx].streaming = false;
+				messages[lastIdx].model = event.payload.model || activeModel;
 				messages = [...messages];
 			}
 			loading = false;
@@ -143,60 +199,49 @@
 	async function checkStatus() {
 		try {
 			status = await invoke<AgentStatus>('get_agent_status');
-			if (status.connected && status.available_models.length > 0) {
-				selectedModel = status.current_model || status.available_models[0].name;
+			const models = status.available_models.filter((model) => {
+				const n = model.name.toLowerCase();
+				return n.includes('mistral') || n.includes('mixtral') || n.includes('ministral') ||
+					n.includes('codestral') || n.includes('devstral') || n.includes('pixtral');
+			});
+			if (status.connected && models.length > 0) {
+				const current = status.current_model || models[0].name;
+				selectedModel = models.some((m) => m.name === current) ? current : models[0].name;
 			}
 		} catch (e) {
 			console.error('Failed to get agent status:', e);
-			status = {
-				connected: false,
-				available_models: [],
-				current_model: '',
-				session_active: false
-			};
+			status = { connected: false, available_models: [], current_model: '', session_active: false };
 		}
 	}
 
 	async function sendMessage() {
 		if (!inputMessage.trim() || loading) return;
-
 		const userMessage = inputMessage.trim();
 		inputMessage = '';
 		loading = true;
+		activeModel = selectedModel;
 
-		// Add user message
-		messages = [...messages, { role: 'user', content: userMessage }];
+		messages = [...messages, { role: 'user', content: userMessage, timestamp: new Date().toISOString() }];
+		scrollToBottom();
 
 		try {
 			if (streamingEnabled) {
-				// Add empty assistant message for streaming
-				messages = [...messages, { role: 'assistant', content: '', streaming: true }];
-				
-				// Use streaming endpoint
-				await invoke<string>('chat_with_agent_stream', { 
-					message: userMessage,
-					model: selectedModel || null
-				});
-				// Response will come via events
+				messages = [...messages, { role: 'assistant', content: '', streaming: true, model: selectedModel, timestamp: new Date().toISOString() }];
+				scrollToBottom();
+				await invoke<string>('chat_with_agent_stream', { message: userMessage, model: selectedModel || null });
 			} else {
-				// Non-streaming mode
-				const response = await invoke<string>('chat_with_agent', { 
-					message: userMessage,
-					model: selectedModel || null
-				});
-				messages = [...messages, { role: 'assistant', content: response }];
+				const response = await invoke<string>('chat_with_agent', { message: userMessage, model: selectedModel || null });
+				messages = [...messages, { role: 'assistant', content: response, model: selectedModel, timestamp: new Date().toISOString() }];
 				loading = false;
+				scrollToBottom();
 			}
 		} catch (e: any) {
-			// Remove streaming message if exists
 			if (messages[messages.length - 1]?.streaming) {
 				messages = messages.slice(0, -1);
 			}
-			messages = [...messages, { 
-				role: 'assistant', 
-				content: `❌ Error: ${e.toString()}` 
-			}];
+			messages = [...messages, { role: 'assistant', content: `Error: ${e.toString()}`, timestamp: new Date().toISOString() }];
 			loading = false;
+			scrollToBottom();
 		}
 	}
 
@@ -209,52 +254,13 @@
 		}
 	}
 
-	async function analyzeSecurityWithAI() {
-		loading = true;
-		messages = [...messages, {
-			role: 'user',
-			content: '🔍 Analyze my current security posture and provide recommendations'
-		}];
-
-		try {
-			const recommendations = await invoke<string[]>('get_security_recommendations');
-			const response = recommendations.join('\n\n');
-			messages = [...messages, { role: 'assistant', content: response }];
-		} catch (e: any) {
-			messages = [...messages, {
-				role: 'assistant',
-				content: `❌ Failed to analyze security: ${e.toString()}`
-			}];
-		} finally {
-			loading = false;
-		}
-	}
-
-	async function testDirectoryScan() {
-		loading = true;
-		messages = [...messages, {
-			role: 'user',
-			content: '🗂️ Can you scan my Documents folder and tell me about its health?'
-		}];
-
-		try {
-			const response = await invoke<string>('chat_with_agent', {
-				message: 'Can you scan my Documents folder and tell me about its health?',
-				model: selectedModel || null
-			});
-			messages = [...messages, { role: 'assistant', content: response }];
-		} catch (e: any) {
-			messages = [...messages, {
-				role: 'assistant',
-				content: `❌ Failed to scan directory: ${e.toString()}`
-			}];
-		} finally {
-			loading = false;
-		}
+	async function quickAction(prompt: string) {
+		inputMessage = prompt;
+		await sendMessage();
 	}
 
 	function formatBytes(bytes: number): string {
-		if (!bytes) return 'Unknown';
+		if (!bytes) return 'Cloud';
 		const gb = bytes / (1024 * 1024 * 1024);
 		return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 	}
@@ -265,77 +271,111 @@
 			sendMessage();
 		}
 	}
+
+	function timeAgo(ts: string | undefined): string {
+		if (!ts) return '';
+		const diff = Date.now() - new Date(ts).getTime();
+		if (diff < 60000) return 'just now';
+		if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+		return `${Math.floor(diff / 3600000)}h ago`;
+	}
 </script>
 
 <svelte:head>
-	<title>AI Security Assistant - Cyber Security Prime</title>
+	<title>Mistral Security Copilot - Cyber Security Prime</title>
 </svelte:head>
 
-<div class="h-full flex flex-col space-y-4">
-	<!-- Header -->
+<div class="h-full flex flex-col gap-4">
+	<!-- Hero Header -->
 	<div class="flex items-center justify-between">
-		<div class="flex items-center gap-3">
-			<div class="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-cyber-purple to-cyber-blue">
-				<Bot class="w-6 h-6 text-white" />
+		<div class="flex items-center gap-4">
+			<div class="mistral-icon-shell flex items-center justify-center w-14 h-14 rounded-2xl relative">
+				<Bot class="w-7 h-7 text-white" />
+				{#if status?.connected}
+					<div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
+				{/if}
 			</div>
 			<div>
-				<h1 class="text-2xl font-bold tracking-tight text-foreground">
-					AI Security Assistant
+				<h1 class="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+					Mistral Security Copilot
+					<Badge variant="outline" class="text-[10px] font-mono tracking-wider border-orange-500/40 text-orange-400">
+						POWERED BY MISTRAL AI
+					</Badge>
 				</h1>
-				<p class="text-muted-foreground text-sm">
-					Powered by Ollama • Local & Private
+				<p class="text-muted-foreground text-sm mt-0.5">
+					Multi-model AI security analysis — deep reasoning, fast triage, code remediation & visual inspection
 				</p>
 			</div>
 		</div>
 		<div class="flex items-center gap-2">
-			<Badge variant={status?.connected ? 'success' : 'destructive'} class="gap-1">
+			<Badge variant={status?.connected ? 'success' : 'destructive'} class="gap-1 px-3 py-1">
 				{#if status?.connected}
-					<Check class="w-3 h-3" /> Connected
+					<Check class="w-3 h-3" /> Online
 				{:else}
-					<X class="w-3 h-3" /> Disconnected
+					<X class="w-3 h-3" /> Offline
 				{/if}
 			</Badge>
-			<Button variant="outline" size="sm" on:click={checkStatus}>
+			<Button variant="outline" size="sm" on:click={checkStatus} class="h-9 w-9 p-0">
 				<RefreshCw class="w-4 h-4" />
 			</Button>
-			<Button variant="outline" size="sm" on:click={() => configOpen = !configOpen}>
+			<Button variant="outline" size="sm" on:click={() => configOpen = !configOpen} class="h-9 w-9 p-0">
 				<Settings class="w-4 h-4" />
 			</Button>
 		</div>
 	</div>
 
+	<!-- Model Routing Bar -->
+	{#if status?.connected && mistralModels.length > 0}
+		<div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-card/60 border border-border/50 backdrop-blur-sm">
+			<span class="text-xs text-muted-foreground font-medium uppercase tracking-wider">Model Routing</span>
+			<div class="h-4 w-px bg-border" />
+			{#each mistralModels as model}
+				{@const meta = getModelMeta(model.name)}
+				<button
+					class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+						{selectedModel === model.name
+							? 'bg-orange-500/15 border border-orange-500/30 ' + meta.color
+							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+					on:click={() => selectedModel = model.name}
+				>
+					<svelte:component this={meta.icon} class="w-3.5 h-3.5" />
+					{meta.label}
+					<span class="text-[10px] opacity-60">({formatBytes(model.size || 0)})</span>
+				</button>
+			{/each}
+		</div>
+	{/if}
+
 	<!-- Config Panel -->
 	{#if configOpen}
-		<Card variant="glass" class="border-cyber-blue/30">
+		<Card variant="glass" class="mistral-panel animate-in">
 			<CardContent class="py-4 space-y-4">
-				<!-- Connection Settings -->
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<label for="ollama-url" class="text-sm text-muted-foreground mb-1 block">Ollama URL</label>
-						<input 
+						<label for="ollama-url" class="text-xs text-muted-foreground mb-1 block font-medium uppercase tracking-wider">Endpoint URL</label>
+						<input
 							id="ollama-url"
-							type="text" 
+							type="text"
 							bind:value={ollamaUrl}
-							class="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-sm"
-							placeholder="http://127.0.0.1:11434"
+							class="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
+							placeholder="https://ollama.com or http://127.0.0.1:11434"
 						/>
 					</div>
 					<div>
-						<label for="model-select" class="text-sm text-muted-foreground mb-1 block">Model</label>
+						<label for="model-select" class="text-xs text-muted-foreground mb-1 block font-medium uppercase tracking-wider">Default Model</label>
 						<div class="relative">
-							<select 
+							<select
 								id="model-select"
 								bind:value={selectedModel}
-								class="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-sm appearance-none cursor-pointer"
+								class="w-full px-3 py-2 bg-muted/50 border border-orange-400/30 rounded-lg text-sm appearance-none cursor-pointer focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
 							>
-								{#if status?.available_models}
-									{#each status.available_models as model}
-										<option value={model.name}>
-											{model.name} ({formatBytes(model.size || 0)})
-										</option>
+								{#if mistralModels.length > 0}
+									{#each mistralModels as model}
+										{@const meta = getModelMeta(model.name)}
+										<option value={model.name}>{meta.label} — {model.name} ({formatBytes(model.size || 0)})</option>
 									{/each}
 								{:else}
-									<option value="">No models available</option>
+									<option value="">No Mistral models available</option>
 								{/if}
 							</select>
 							<ChevronDown class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
@@ -346,30 +386,25 @@
 				<!-- API Key Section -->
 				<div class="border-t border-border pt-4">
 					<div class="flex items-center gap-2 mb-2">
-						<Cloud class="w-4 h-4 text-cyber-purple" />
-						<span class="text-sm font-medium">Cloud / API Key</span>
+						<Cloud class="w-4 h-4 text-orange-400" />
+						<span class="text-sm font-medium">API Key (OS Keychain)</span>
 						{#if hasApiKey}
-							<Badge variant="success" class="text-[10px]">Configured</Badge>
+							<Badge variant="success" class="text-[10px]">Stored Securely</Badge>
 						{/if}
 					</div>
 					<p class="text-xs text-muted-foreground mb-3">
-						For cloud-hosted Ollama or authenticated endpoints. Key is stored securely in your OS keychain.
+						Your API key is encrypted and stored in your operating system's native keychain — never in config files.
 					</p>
-					
+
 					{#if hasApiKey}
 						<div class="flex items-center gap-2">
 							<div class="flex-1 px-3 py-2 bg-muted/50 border border-border rounded-lg text-sm text-muted-foreground">
 								<span class="flex items-center gap-2">
-									<Key class="w-4 h-4" />
-									••••••••••••••••
+									<Key class="w-4 h-4 text-green-500" />
+									<span class="font-mono text-xs tracking-widest">••••••••••••••••</span>
 								</span>
 							</div>
-							<Button 
-								variant="destructive" 
-								size="sm" 
-								on:click={deleteApiKey}
-								disabled={savingApiKey}
-							>
+							<Button variant="destructive" size="sm" on:click={deleteApiKey} disabled={savingApiKey}>
 								{#if savingApiKey}
 									<Loader2 class="w-4 h-4 animate-spin" />
 								{:else}
@@ -381,39 +416,21 @@
 						<div class="flex items-center gap-2">
 							<div class="relative flex-1">
 								<Key class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-								{#if showApiKey}
-									<input 
-										type="text"
-										bind:value={apiKey}
-										class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm"
-										placeholder="Enter API key for cloud models"
-									/>
-								{:else}
-									<input 
-										type="password"
-										bind:value={apiKey}
-										class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm"
-										placeholder="Enter API key for cloud models"
-									/>
-								{/if}
-								<button 
+								<input
+									type={showApiKey ? 'text' : 'password'}
+									bind:value={apiKey}
+									class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
+									placeholder="Enter your Ollama Cloud / Mistral API key"
+								/>
+								<button
 									type="button"
 									class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
 									on:click={() => showApiKey = !showApiKey}
 								>
-									{#if showApiKey}
-										<EyeOff class="w-4 h-4" />
-									{:else}
-										<Eye class="w-4 h-4" />
-									{/if}
+									{#if showApiKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
 								</button>
 							</div>
-							<Button 
-								variant="cyber" 
-								size="sm" 
-								on:click={saveApiKey}
-								disabled={!apiKey.trim() || savingApiKey}
-							>
+							<Button variant="cyber" size="sm" on:click={saveApiKey} disabled={!apiKey.trim() || savingApiKey}>
 								{#if savingApiKey}
 									<Loader2 class="w-4 h-4 animate-spin" />
 								{:else}
@@ -424,20 +441,20 @@
 					{/if}
 				</div>
 
-				<!-- Status Footer -->
+				<!-- Footer -->
 				<div class="flex items-center justify-between pt-2 border-t border-border">
 					<div class="flex items-center gap-2 text-xs text-muted-foreground">
 						<Server class="w-4 h-4" />
 						<span>
 							{#if status?.connected}
-								{status.available_models.length} model(s) available
+								{mistralModels.length} Mistral model{mistralModels.length !== 1 ? 's' : ''} available
 							{:else}
-								Ollama not running. Start with: <code class="px-1 py-0.5 bg-muted rounded">ollama serve</code>
+								Endpoint unreachable — run <code class="px-1 py-0.5 bg-muted rounded font-mono">ollama serve</code>
 							{/if}
 						</span>
 					</div>
 					<div class="flex items-center gap-2">
-						<Zap class="w-4 h-4 text-neon-yellow" />
+						<Zap class="w-4 h-4 text-yellow-400" />
 						<span class="text-xs text-muted-foreground">Streaming</span>
 						<Switch bind:checked={streamingEnabled} />
 					</div>
@@ -447,107 +464,157 @@
 	{/if}
 
 	<!-- Chat Area -->
-	<Card variant="glass" class="flex-1 flex flex-col overflow-hidden">
-		<CardHeader class="border-b border-border py-3">
+	<Card variant="glass" class="flex-1 flex flex-col overflow-hidden min-h-0">
+		<CardHeader class="border-b border-border py-3 flex-shrink-0">
 			<div class="flex items-center justify-between">
-				<CardTitle class="text-lg flex items-center gap-2">
-					<Bot class="w-5 h-5 text-cyber-blue" />
-					Security Chat
+				<CardTitle class="text-base flex items-center gap-2">
+					<Shield class="w-5 h-5 text-orange-400" />
+					Security Analysis Chat
+					{#if activeModel && loading}
+						<Badge variant="outline" class="text-[10px] font-mono gap-1 animate-pulse border-orange-500/30 text-orange-400">
+							<svelte:component this={getModelMeta(activeModel).icon} class="w-3 h-3" />
+							{getModelMeta(activeModel).label}
+						</Badge>
+					{/if}
 				</CardTitle>
-				<div class="flex items-center gap-2">
-					<Button variant="ghost" size="sm" on:click={analyzeSecurityWithAI} disabled={!status?.connected || loading}>
-						<ShieldCheck class="w-4 h-4 mr-1" />
-						Analyze Security
+				<div class="flex items-center gap-1">
+					<Button variant="ghost" size="sm" on:click={() => quickAction('Analyze my current security posture and provide recommendations')} disabled={!status?.connected || loading} class="text-xs h-8">
+						<ShieldCheck class="w-3.5 h-3.5 mr-1" />
+						Security Audit
 					</Button>
-					<Button variant="ghost" size="sm" on:click={testDirectoryScan} disabled={!status?.connected || loading}>
-						<Server class="w-4 h-4 mr-1" />
-						Scan Documents
+					<Button variant="ghost" size="sm" on:click={() => quickAction('Scan my Documents folder and analyze its health')} disabled={!status?.connected || loading} class="text-xs h-8">
+						<FolderSearch class="w-3.5 h-3.5 mr-1" />
+						Scan Folder
 					</Button>
-					<Button variant="ghost" size="sm" on:click={clearSession}>
+					<div class="w-px h-5 bg-border mx-1" />
+					<Button variant="ghost" size="sm" on:click={clearSession} class="h-8 w-8 p-0">
 						<Trash2 class="w-4 h-4" />
 					</Button>
 				</div>
 			</div>
 		</CardHeader>
-		
-		<CardContent class="flex-1 overflow-y-auto p-4 space-y-4">
+
+		<CardContent class="flex-1 overflow-y-auto p-4 space-y-5 min-h-0" bind:this={chatContainer}>
 			{#if messages.length === 0}
-				<div class="h-full flex flex-col items-center justify-center text-center text-muted-foreground">
-					<Bot class="w-16 h-16 mb-4 opacity-30" />
-					<p class="text-lg font-medium">Start a conversation</p>
-					<p class="text-sm mt-1">Ask about security threats, get recommendations, or analyze your system</p>
-					<div class="flex flex-wrap gap-2 mt-6 max-w-md justify-center">
-						<Button 
-							variant="outline" 
-							size="sm"
-							on:click={() => { inputMessage = 'What are the top security risks I should be aware of?'; sendMessage(); }}
+				<!-- Empty State -->
+				<div class="h-full flex flex-col items-center justify-center text-center">
+					<div class="mistral-icon-shell w-20 h-20 rounded-3xl flex items-center justify-center mb-6 opacity-80">
+						<Bot class="w-10 h-10 text-white" />
+					</div>
+					<p class="text-xl font-semibold text-foreground mb-1">What can I help you secure?</p>
+					<p class="text-sm text-muted-foreground max-w-md">
+						Ask me to analyze threats, audit your system, scan directories, review firewall rules, or explain any cybersecurity concept.
+					</p>
+
+					<div class="grid grid-cols-2 gap-3 mt-8 max-w-lg w-full">
+						<button
+							class="quick-action-card group"
+							on:click={() => quickAction('What are the top security risks I should be aware of right now?')}
 							disabled={!status?.connected}
 						>
-							<Sparkles class="w-3 h-3 mr-1" />
-							Top security risks
-						</Button>
-						<Button 
-							variant="outline" 
-							size="sm"
-							on:click={() => { inputMessage = 'How can I improve my firewall settings?'; sendMessage(); }}
+							<AlertTriangle class="w-5 h-5 text-orange-400 mb-2 group-hover:scale-110 transition-transform" />
+							<span class="text-sm font-medium">Current threat landscape</span>
+							<span class="text-xs text-muted-foreground">Top risks & mitigations</span>
+						</button>
+						<button
+							class="quick-action-card group"
+							on:click={() => quickAction('Analyze my firewall configuration and suggest improvements')}
 							disabled={!status?.connected}
 						>
-							Firewall tips
-						</Button>
-						<Button 
-							variant="outline" 
-							size="sm"
-							on:click={() => { inputMessage = 'Explain ransomware and how to prevent it'; sendMessage(); }}
+							<Shield class="w-5 h-5 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
+							<span class="text-sm font-medium">Firewall analysis</span>
+							<span class="text-xs text-muted-foreground">Review & harden rules</span>
+						</button>
+						<button
+							class="quick-action-card group"
+							on:click={() => quickAction('Scan my Downloads folder for suspicious files and malware indicators')}
 							disabled={!status?.connected}
 						>
-							About ransomware
-						</Button>
+							<FolderSearch class="w-5 h-5 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
+							<span class="text-sm font-medium">Scan Downloads</span>
+							<span class="text-xs text-muted-foreground">Check for threats</span>
+						</button>
+						<button
+							class="quick-action-card group"
+							on:click={() => quickAction('Explain ransomware attack chains and how to prevent them')}
+							disabled={!status?.connected}
+						>
+							<Sparkles class="w-5 h-5 text-violet-400 mb-2 group-hover:scale-110 transition-transform" />
+							<span class="text-sm font-medium">Learn ransomware</span>
+							<span class="text-xs text-muted-foreground">Attack chains & defense</span>
+						</button>
 					</div>
 				</div>
 			{:else}
-				{#each messages as message}
-					<div class="flex gap-3 {message.role === 'user' ? 'flex-row-reverse' : ''}">
-						<div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 {message.role === 'user' ? 'bg-cyber-blue' : 'bg-cyber-purple'}">
+				{#each messages as message, i}
+					<div class="flex gap-3 {message.role === 'user' ? 'flex-row-reverse' : ''} animate-in">
+						<!-- Avatar -->
+						<div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
+							{message.role === 'user' ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'mistral-avatar'}">
 							{#if message.role === 'user'}
-								<span class="text-sm font-bold text-white">U</span>
+								<span class="text-xs font-bold text-white">U</span>
 							{:else}
 								<Bot class="w-4 h-4 text-white" />
 							{/if}
 						</div>
-						<div class="max-w-[80%] rounded-xl px-4 py-3 {message.role === 'user' ? 'bg-cyber-blue/20 text-right' : 'bg-muted/50'}">
-							<p class="text-sm whitespace-pre-wrap">{message.content}</p>
+
+						<!-- Message Bubble -->
+						<div class="max-w-[80%] min-w-0 {message.role === 'user' ? 'ml-auto' : ''}">
+							{#if message.role === 'assistant' && message.model}
+								{@const meta = getModelMeta(message.model)}
+								<div class="flex items-center gap-1.5 mb-1 text-[10px] {meta.color} font-medium">
+									<svelte:component this={meta.icon} class="w-3 h-3" />
+									{meta.label}
+									{#if message.timestamp}
+										<span class="text-muted-foreground ml-1">{timeAgo(message.timestamp)}</span>
+									{/if}
+								</div>
+							{/if}
+
+							<div class="rounded-2xl px-4 py-3 {message.role === 'user'
+								? 'bg-blue-600/20 border border-blue-500/20'
+								: 'bg-muted/40 border border-border/50'}">
+								{#if message.role === 'assistant'}
+									<div class="prose prose-sm prose-invert max-w-none message-content">
+										{#if message.streaming && message.content === ''}
+											<div class="flex items-center gap-2 text-sm text-muted-foreground">
+												<Loader2 class="w-4 h-4 animate-spin text-orange-400" />
+												<span class="animate-pulse">Analyzing...</span>
+											</div>
+										{:else}
+											{@html renderMarkdown(message.content)}
+											{#if message.streaming}
+												<span class="inline-block w-2 h-4 bg-orange-400 animate-pulse ml-0.5 rounded-sm" />
+											{/if}
+										{/if}
+									</div>
+								{:else}
+									<p class="text-sm whitespace-pre-wrap">{message.content}</p>
+								{/if}
+							</div>
 						</div>
 					</div>
 				{/each}
-				{#if loading}
-					<div class="flex gap-3">
-						<div class="w-8 h-8 rounded-lg bg-cyber-purple flex items-center justify-center flex-shrink-0">
-							<Bot class="w-4 h-4 text-white" />
-						</div>
-						<div class="bg-muted/50 rounded-xl px-4 py-3">
-							<Loader2 class="w-5 h-5 animate-spin text-cyber-blue" />
-						</div>
-					</div>
-				{/if}
 			{/if}
 		</CardContent>
 
 		<!-- Input Area -->
-		<div class="border-t border-border p-4">
-			<div class="flex gap-2">
-				<textarea 
+		<div class="border-t border-border p-4 flex-shrink-0">
+			<div class="flex gap-2 items-end">
+				<textarea
 					bind:value={inputMessage}
 					on:keydown={handleKeydown}
-					placeholder={status?.connected ? 'Ask about security, threats, recommendations...' : 'Connect to Ollama to start chatting'}
+					placeholder={status?.connected ? 'Describe a threat, ask for analysis, or request a scan...' : 'Connect to a Mistral endpoint to start'}
 					disabled={!status?.connected || loading}
 					rows="1"
-					class="flex-1 px-4 py-3 bg-muted/30 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-cyber-blue/50 disabled:opacity-50"
+					class="flex-1 px-4 py-3 bg-muted/30 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/30 disabled:opacity-50 transition-all text-sm min-h-[44px] max-h-[120px]"
 				/>
-				<Button 
-					variant="cyber" 
+				<Button
+					variant="cyber"
 					size="lg"
 					on:click={sendMessage}
 					disabled={!status?.connected || loading || !inputMessage.trim()}
+					class="h-[44px] w-[44px] p-0 rounded-xl"
 				>
 					{#if loading}
 						<Loader2 class="w-5 h-5 animate-spin" />
@@ -556,6 +623,139 @@
 					{/if}
 				</Button>
 			</div>
+			<div class="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
+				<span>
+					{#if selectedModel}
+						{@const meta = getModelMeta(selectedModel)}
+						<span class="inline-flex items-center gap-1 {meta.color}">
+							<svelte:component this={meta.icon} class="w-3 h-3" />
+							{meta.label}
+						</span>
+						<span class="mx-1 opacity-40">|</span>
+					{/if}
+					{streamingEnabled ? 'Streaming enabled' : 'Batch mode'}
+				</span>
+				<span class="opacity-60">Shift+Enter for new line</span>
+			</div>
 		</div>
 	</Card>
 </div>
+
+<style>
+	.mistral-icon-shell {
+		background: linear-gradient(135deg, rgba(255, 115, 0, 0.9), rgba(255, 153, 0, 0.8));
+		box-shadow: 0 0 24px rgba(255, 120, 0, 0.35), 0 0 48px rgba(255, 120, 0, 0.15);
+	}
+
+	.mistral-avatar {
+		background: linear-gradient(135deg, #ff7300, #ff9900);
+	}
+
+	:global(.mistral-panel) {
+		border-color: rgba(255, 138, 18, 0.35);
+		background:
+			radial-gradient(circle at top right, rgba(255, 138, 18, 0.12), transparent 40%),
+			radial-gradient(circle at bottom left, rgba(255, 94, 0, 0.1), transparent 45%);
+	}
+
+	.quick-action-card {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		padding: 1rem;
+		border-radius: 0.75rem;
+		border: 1px solid hsl(var(--border) / 0.5);
+		background: hsl(var(--card) / 0.6);
+		backdrop-filter: blur(8px);
+		cursor: pointer;
+		transition: all 0.2s ease;
+		text-align: left;
+	}
+
+	.quick-action-card:hover:not(:disabled) {
+		border-color: rgba(255, 138, 18, 0.4);
+		background: hsl(var(--card) / 0.9);
+		box-shadow: 0 0 20px rgba(255, 138, 18, 0.1);
+		transform: translateY(-1px);
+	}
+
+	.quick-action-card:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	:global(.message-content p) {
+		margin: 0.25em 0;
+	}
+
+	:global(.message-content ul),
+	:global(.message-content ol) {
+		margin: 0.5em 0;
+		padding-left: 1.5em;
+	}
+
+	:global(.message-content li) {
+		margin: 0.15em 0;
+	}
+
+	:global(.message-content code) {
+		font-size: 0.85em;
+		background: hsl(var(--muted));
+		padding: 0.15em 0.4em;
+		border-radius: 0.25em;
+	}
+
+	:global(.message-content pre) {
+		background: hsl(var(--muted) / 0.7);
+		border: 1px solid hsl(var(--border));
+		border-radius: 0.5rem;
+		padding: 0.75rem 1rem;
+		overflow-x: auto;
+		margin: 0.5em 0;
+	}
+
+	:global(.message-content pre code) {
+		background: none;
+		padding: 0;
+	}
+
+	:global(.message-content h1),
+	:global(.message-content h2),
+	:global(.message-content h3) {
+		margin-top: 0.75em;
+		margin-bottom: 0.25em;
+		font-weight: 600;
+	}
+
+	:global(.message-content blockquote) {
+		border-left: 3px solid rgba(255, 138, 18, 0.4);
+		padding-left: 0.75rem;
+		margin: 0.5em 0;
+		color: hsl(var(--muted-foreground));
+	}
+
+	:global(.message-content table) {
+		border-collapse: collapse;
+		margin: 0.5em 0;
+		font-size: 0.85em;
+	}
+
+	:global(.message-content th),
+	:global(.message-content td) {
+		border: 1px solid hsl(var(--border));
+		padding: 0.35em 0.75em;
+	}
+
+	:global(.message-content th) {
+		background: hsl(var(--muted) / 0.5);
+	}
+
+	.animate-in {
+		animation: message-in 0.25s ease-out;
+	}
+
+	@keyframes message-in {
+		from { opacity: 0; transform: translateY(8px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+</style>

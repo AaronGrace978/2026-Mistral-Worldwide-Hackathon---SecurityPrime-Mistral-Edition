@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecurityPrime — Next-Gen Cybersecurity</title>
+  <meta name="description" content="SecurityPrime: A powerful, modular cybersecurity desktop app built with Rust, Tauri & Svelte. Not from a big vendor — but it works. Proof inside." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #04060b;
+      --surface: rgba(13, 17, 23, 0.7);
+      --surface-solid: #0d1117;
+      --border: rgba(0, 217, 255, 0.1);
+      --border-bright: rgba(0, 217, 255, 0.3);
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #00d9ff;
+      --accent2: #a855f7;
+      --accent3: #22d3ee;
+      --success: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --glow: 0 0 20px rgba(0, 217, 255, 0.3), 0 0 60px rgba(0, 217, 255, 0.1);
+      --glow-purple: 0 0 20px rgba(168, 85, 247, 0.3), 0 0 60px rgba(168, 85, 247, 0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ==================== CANVAS BACKGROUND ==================== */
+    #bg-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ==================== GLOW ORBS ==================== */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -100px; animation: orbFloat1 20s ease-in-out infinite; }
+    .orb-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -100px; animation: orbFloat2 25s ease-in-out infinite; }
+    .orb-3 { width: 400px; height: 400px; background: #06b6d4; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: orbFloat3 18s ease-in-out infinite; }
+    @keyframes orbFloat1 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(80px, 60px); } }
+    @keyframes orbFloat2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-60px, -80px); } }
+    @keyframes orbFloat3 { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-40%, -60%) scale(1.2); } }
+
+    /* ==================== LAYOUT ==================== */
+    .page { position: relative; z-index: 1; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+
+    /* ==================== NAV BAR ==================== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(4, 6, 11, 0.8);
+      border-bottom: 1px solid var(--border);
+      transition: box-shadow 0.3s;
+    }
+    nav.scrolled { box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.9rem 2rem;
+    }
+    .nav-logo {
+      font-size: 1.2rem; font-weight: 800; letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+
+    /* ==================== HERO ==================== */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 6rem 2rem 4rem;
+      position: relative;
+    }
+    .hero-content { max-width: 800px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(0, 217, 255, 0.08);
+      border: 1px solid rgba(0, 217, 255, 0.2);
+      padding: 0.5rem 1.2rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600; color: var(--accent);
+      margin-bottom: 2rem;
+      animation: fadeInUp 0.8s ease-out;
+    }
+    .hero-badge .pulse {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900; line-height: 1.1;
+      letter-spacing: -2px;
+      margin-bottom: 1.5rem;
+      animation: fadeInUp 0.8s ease-out 0.1s both;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      background-size: 200% 200%;
+      animation: gradientShift 5s ease-in-out infinite;
+    }
+    @keyframes gradientShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    .hero .subtitle {
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      color: var(--muted); max-width: 600px; margin: 0 auto 2.5rem;
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+    .hero-buttons {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+      animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.85rem 2rem; border-radius: 12px;
+      font-size: 0.95rem; font-weight: 600;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #0099cc);
+      color: #000; box-shadow: var(--glow);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0, 217, 255, 0.5), 0 0 80px rgba(0, 217, 255, 0.2); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      border: 1px solid var(--border-bright);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==================== STATS BAR ==================== */
+    .stats {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem; padding: 3rem 0;
+    }
+    .stat-card {
+      text-align: center; padding: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s;
+    }
+    .stat-card:hover { border-color: var(--border-bright); transform: translateY(-4px); box-shadow: var(--glow); }
+    .stat-number {
+      font-size: 2.5rem; font-weight: 900;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-label { color: var(--muted); font-size: 0.85rem; font-weight: 500; margin-top: 0.25rem; }
+
+    /* ==================== SECTIONS ==================== */
+    .section { padding: 5rem 0; }
+    .section-header { text-align: center; margin-bottom: 3rem; }
+    .section-tag {
+      display: inline-block;
+      font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+      color: var(--accent); margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      font-weight: 800; letter-spacing: -1px; margin-bottom: 1rem;
+    }
+    .section-subtitle { color: var(--muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+
+    /* ==================== FEATURE GRID ==================== */
+    .feature-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+    .feature-card {
+      padding: 1.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      transition: all 0.35s ease;
+      position: relative; overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .feature-card:hover { border-color: var(--border-bright); transform: translateY(-4px); }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 1rem;
+      background: rgba(0, 217, 255, 0.1); color: var(--accent);
+    }
+    .feature-card:nth-child(even) .feature-icon {
+      background: rgba(168, 85, 247, 0.1); color: var(--accent2);
+    }
+    .feature-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .feature-card p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+
+    /* ==================== RELEASE SECTION ==================== */
+    .release-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+    }
+    .release-item {
+      padding: 1.5rem; text-align: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; backdrop-filter: blur(10px);
+      transition: all 0.3s;
+    }
+    .release-item:hover { border-color: var(--border-bright); transform: translateY(-3px); }
+    .release-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .release-item h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .release-item p { color: var(--muted); font-size: 0.82rem; }
+
+    /* ==================== PROOF / IT WORKS ==================== */
+    .proof-section {
+      background: linear-gradient(135deg, rgba(0, 217, 255, 0.03), rgba(168, 85, 247, 0.03));
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .proof-card {
+      display: flex; align-items: flex-start; gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; margin-bottom: 1rem;
+      transition: all 0.3s;
+    }
+    .proof-card:hover { border-color: var(--border-bright); box-shadow: var(--glow); }
+    .proof-check {
+      width: 32px; height: 32px; min-width: 32px;
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      background: rgba(16, 185, 129, 0.15); color: var(--success);
+      font-weight: 800; font-size: 1rem;
+    }
+    .proof-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .proof-card p { color: var(--muted); font-size: 0.85rem; }
+    .proof-card code {
+      background: rgba(0, 217, 255, 0.1); color: var(--accent);
+      padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ==================== COMPARISON TABLE ==================== */
+    .table-wrap {
+      overflow-x: auto; border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface); backdrop-filter: blur(10px);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td {
+      padding: 0.9rem 1.1rem; text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    th {
+      font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--muted);
+      background: rgba(0, 217, 255, 0.04);
+    }
+    th:nth-child(2) { color: var(--accent); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(0, 217, 255, 0.02); }
+    td:first-child { font-weight: 600; color: var(--text); }
+    .t-yes { color: var(--success); font-weight: 600; }
+    .t-partial { color: var(--warn); }
+    .t-no { color: var(--muted); }
+    .t-sp { color: var(--accent); font-weight: 600; }
+
+    /* ==================== ROADMAP / COMING NEXT ==================== */
+    .roadmap-category { margin-bottom: 3rem; }
+    .roadmap-category:last-child { margin-bottom: 0; }
+    .roadmap-cat-header {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .roadmap-cat-icon {
+      width: 40px; height: 40px; min-width: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    }
+    .roadmap-cat-icon.impact { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .roadmap-cat-icon.trust { background: rgba(168, 85, 247, 0.15); color: var(--accent2); }
+    .roadmap-cat-icon.polish { background: rgba(0, 217, 255, 0.15); color: var(--accent); }
+    .roadmap-cat-header h3 { font-size: 1.15rem; font-weight: 700; }
+    .roadmap-cat-header .cat-count {
+      font-size: 0.75rem; font-weight: 700; color: var(--muted);
+      background: rgba(255,255,255,0.06); padding: 0.2rem 0.6rem; border-radius: 999px;
+      margin-left: auto;
+    }
+    .roadmap-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .roadmap-card {
+      padding: 1.25rem 1.4rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; backdrop-filter: blur(10px);
+      transition: all 0.3s; position: relative; overflow: hidden;
+    }
+    .roadmap-card::after {
+      content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
+      border-radius: 3px 0 0 3px; transition: opacity 0.3s;
+    }
+    .roadmap-category:nth-child(1) .roadmap-card::after { background: var(--danger); }
+    .roadmap-category:nth-child(2) .roadmap-card::after { background: var(--accent2); }
+    .roadmap-category:nth-child(3) .roadmap-card::after { background: var(--accent); }
+    .roadmap-card:hover { border-color: var(--border-bright); transform: translateY(-3px); }
+    .roadmap-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .roadmap-card p { color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
+    .roadmap-badge {
+      display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; padding: 0.2rem 0.55rem; border-radius: 6px; margin-bottom: 0.6rem;
+    }
+    .badge-building { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+    .badge-planned { background: rgba(139, 148, 158, 0.15); color: var(--muted); }
+
+    /* ==================== CTA BOTTOM ==================== */
+    .cta {
+      text-align: center; padding: 5rem 0 6rem;
+    }
+    .cta h2 {
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      font-weight: 800; letter-spacing: -1px; margin-bottom: 1rem;
+    }
+    .cta p { color: var(--muted); margin-bottom: 2rem; font-size: 1.05rem; }
+
+    /* ==================== FOOTER ==================== */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem; text-align: center;
+    }
+    footer p { color: var(--muted); font-size: 0.85rem; }
+    footer a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+    footer a:hover { color: var(--text); }
+    .footer-tag {
+      color: var(--accent2);
+      font-weight: 600;
+    }
+    .footer-tag:hover { color: var(--accent); }
+    .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+
+    /* ==================== SCROLL REVEAL ==================== */
+    .reveal {
+      opacity: 0; transform: translateY(40px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ==================== RESPONSIVE ==================== */
+    @media (max-width: 768px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .nav-links { display: none; }
+      .hero { padding-top: 8rem; }
+    }
+    @media (max-width: 480px) {
+      .stats { grid-template-columns: 1fr; }
+      .container { padding: 0 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <nav id="navbar">
+    <div class="nav-inner">
+      <div class="nav-logo">SecurityPrime</div>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#roadmap">What's Next</a></li>
+        <li><a href="#proof">Proof</a></li>
+        <li><a href="#compare">Compare</a></li>
+        <li><a href="https://github.com/AaronGrace978/SecurityPrime">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="page">
+
+    <!-- ============================== HERO ============================== -->
+    <section class="hero">
+      <div class="hero-content">
+        <div class="hero-badge"><span class="pulse"></span> v0.1.0 &mdash; Ready for Release</div>
+        <h1>Cybersecurity that<br><span class="gradient">actually works.</span></h1>
+        <p class="subtitle">
+          SecurityPrime is a modular, all-in-one desktop security suite built with Rust, Tauri &amp; Svelte.
+          Not from a Fortune 500 vendor. Not from a traditional CS team. <strong style="color:var(--text)">And it works.</strong>
+        </p>
+        <div class="hero-buttons">
+          <a class="btn btn-primary" href="https://github.com/AaronGrace978/SecurityPrime">Get the Source</a>
+          <a class="btn btn-secondary" href="#proof">See the Proof</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== STATS ============================== -->
+    <div class="container">
+      <div class="stats">
+        <div class="stat-card reveal">
+          <div class="stat-number" data-target="17">0</div>
+          <div class="stat-label">Core Modules</div>
+        </div>
+        <div class="stat-card reveal reveal-delay-1">
+          <div class="stat-number" data-target="16">0</div>
+          <div class="stat-label">New Features Incoming</div>
+        </div>
+        <div class="stat-card reveal reveal-delay-2">
+          <div class="stat-number" data-target="15">0</div>
+          <div class="stat-label">Frontend Routes</div>
+        </div>
+        <div class="stat-card reveal reveal-delay-3">
+          <div class="stat-number">100<span style="font-size:1.5rem">%</span></div>
+          <div class="stat-label">Rust Backend</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== FEATURES ============================== -->
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">Capabilities</div>
+          <h2 class="section-title">Everything you need. One app.</h2>
+          <p class="section-subtitle">Enterprise-grade security modules packed into a single, beautiful desktop application.</p>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card reveal">
+            <div class="feature-icon">&#x1f6e1;</div>
+            <h3>Malware Scanner</h3>
+            <p>Quick, full, and custom scans. Memory forensics, behavioral analysis, YARA rules, threat quarantine.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <div class="feature-icon">&#x1f525;</div>
+            <h3>Firewall Manager</h3>
+            <p>Hooks into real Windows Firewall via netsh. View profiles, toggle rules, monitor blocked connections.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-2">
+            <div class="feature-icon">&#x1f512;</div>
+            <h3>File Encryption</h3>
+            <p>AES-256-GCM encryption for files and folders. Encrypt, decrypt, and manage protected assets.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-3">
+            <div class="feature-icon">&#x1f41b;</div>
+            <h3>Vulnerability Scanner</h3>
+            <p>CVE-aware checks for outdated software, missing patches, weak configurations, and known exploits.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="feature-icon">&#x1f310;</div>
+            <h3>Network Monitor</h3>
+            <p>Real-time view of every connection. See processes, bandwidth, remote endpoints, and suspicious traffic.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <div class="feature-icon">&#x1f9e0;</div>
+            <h3>AI Security Agent</h3>
+            <p>Ollama-powered assistant for threat analysis, system health reports, and intelligent recommendations.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-2">
+            <div class="feature-icon">&#x1f50d;</div>
+            <h3>Tamper Detection</h3>
+            <p>File integrity checks, anomaly detection, secure boot verification, and TPM awareness.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-3">
+            <div class="feature-icon">&#x1f3e2;</div>
+            <h3>Compliance & Isolation</h3>
+            <p>GDPR/HIPAA data tracking, sandbox isolation, and audit-ready compliance modules.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="feature-icon">&#x2699;</div>
+            <h3>MSP Dashboard</h3>
+            <p>Multi-tenant Rust server, REST API, license management, and a dedicated SvelteKit MSP dashboard.</p>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <div class="feature-icon">&#x1f6e0;</div>
+            <h3>Security Hardening</h3>
+            <p>Automated system hardening recommendations and configuration enforcement.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== RELEASE READY ============================== -->
+    <section class="section" id="release">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">Ship It</div>
+          <h2 class="section-title">Ready for release.</h2>
+          <p class="section-subtitle">Installers, documentation, and a production build pipeline. This isn't a prototype.</p>
+        </div>
+        <div class="release-grid">
+          <div class="release-item reveal">
+            <div class="release-icon">&#x1f4e6;</div>
+            <h4>MSI &amp; NSIS Installers</h4>
+            <p>One command: <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.78rem">npm run tauri build</code></p>
+          </div>
+          <div class="release-item reveal reveal-delay-1">
+            <div class="release-icon">&#x1f4d6;</div>
+            <h4>Full Documentation</h4>
+            <p>User Guide, API Reference, MSP Deployment Guide, and Quick Start.</p>
+          </div>
+          <div class="release-item reveal reveal-delay-2">
+            <div class="release-icon">&#x1f5a5;</div>
+            <h4>Cross-Platform</h4>
+            <p>Windows, macOS, and Linux via Tauri's native build system.</p>
+          </div>
+          <div class="release-item reveal reveal-delay-3">
+            <div class="release-icon">&#x1f6ab;</div>
+            <h4>Zero Telemetry</h4>
+            <p>No data collection. No phoning home. Everything stays on-device.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== PROOF ============================== -->
+    <section class="section proof-section" id="proof">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">Receipts</div>
+          <h2 class="section-title">Not from a big vendor.<br>Still works. Here's proof.</h2>
+          <p class="section-subtitle">SecurityPrime wasn't built by McAfee, Norton, or Microsoft. It was built with modern tools and careful engineering &mdash; and every claim is verifiable in the repo.</p>
+        </div>
+        <div class="proof-list-wrap">
+          <div class="proof-card reveal">
+            <div class="proof-check">&#10003;</div>
+            <div>
+              <h4>Real Windows Firewall Integration</h4>
+              <p>The firewall module calls <code>netsh advfirewall</code> directly. It reads profile states, counts active rules, toggles all profiles, and creates/deletes rules. No mocks &mdash; it talks to the OS. See <code>src-tauri/src/modules/firewall.rs</code>.</p>
+            </div>
+          </div>
+          <div class="proof-card reveal reveal-delay-1">
+            <div class="proof-check">&#10003;</div>
+            <div>
+              <h4>Memory-Safe Rust Backend</h4>
+              <p>All security-sensitive logic (scanner, firewall, encryption, vulnerability, tamper detection, network) is written in Rust. No undefined behavior. No buffer overflows. 17 modules in <code>src-tauri/src/modules/</code>.</p>
+            </div>
+          </div>
+          <div class="proof-card reveal reveal-delay-2">
+            <div class="proof-check">&#10003;</div>
+            <div>
+              <h4>Automated Tests Pass</h4>
+              <p>Rust integration tests cover compliance, isolation, management, and tamper detection. Module health checks and initialization are asserted. Playwright E2E tests verify dashboard loading, navigation, and module visibility. See <code>src-tauri/tests/</code> and <code>e2e-tests/</code>.</p>
+            </div>
+          </div>
+          <div class="proof-card reveal reveal-delay-3">
+            <div class="proof-check">&#10003;</div>
+            <div>
+              <h4>Working UI + Live IPC</h4>
+              <p>The Svelte frontend communicates with the Rust backend via Tauri's secure invoke. 15 routes are wired: dashboard, scanner, firewall, encryption, vulnerability, network, settings, compliance, isolation, management, VPN, plugins, analytics, agent, and security hardening.</p>
+            </div>
+          </div>
+          <div class="proof-card reveal reveal-delay-4">
+            <div class="proof-check">&#10003;</div>
+            <div>
+              <h4>Production Deliverables</h4>
+              <p>Build scripts (<code>build.bat</code>, <code>setup.bat</code>, <code>dev.bat</code>), a Quick Start guide, a full User Guide with keyboard shortcuts, an API Reference for the MSP server, and an MSP Deployment Guide. This is release-grade.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== ROADMAP / WHAT'S NEXT ============================== -->
+    <section class="section" id="roadmap">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">What's Coming</div>
+          <h2 class="section-title">We're not done.<br>Not even close.</h2>
+          <p class="section-subtitle">These high-impact enhancements are actively being added. SecurityPrime is evolving from strong foundations into a full EDR-class product.</p>
+        </div>
+
+        <!-- HIGH-IMPACT ENHANCEMENTS -->
+        <div class="roadmap-category">
+          <div class="roadmap-cat-header reveal">
+            <div class="roadmap-cat-icon impact">&#x26A1;</div>
+            <h3>High-Impact Enhancements</h3>
+            <span class="cat-count">6 features</span>
+          </div>
+          <div class="roadmap-grid">
+            <div class="roadmap-card reveal">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Autonomous Response Playbooks</h4>
+              <p>One-click or auto actions when threat score crosses a threshold &mdash; isolate process, block IP, quarantine file, disable startup item. Configurable runbooks, not just alerts.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-1">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Attack Surface Dashboard</h4>
+              <p>Combines vuln scan + firewall + running services + exposed ports into a single "exposure map" with a live risk score. One view, total visibility.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-2">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Behavior-Based Detection</h4>
+              <p>Beyond signatures. Detect suspicious behavior chains &mdash; e.g., PowerShell spawns + persistence write + outbound beacon &mdash; and flag the full chain, not just the payload.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-3">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Threat Timeline (EDR-lite)</h4>
+              <p>Per-device event timeline showing "what happened first" for investigations. Correlate process, file, network, and registry events into a clear incident story.</p>
+            </div>
+            <div class="roadmap-card reveal">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Zero-Trust App Control</h4>
+              <p>Allowlist / denylist by executable hash + signer reputation + parent process. Only trusted code runs. Everything else gets stopped and logged.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-1">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Rollback &amp; Remediation Mode</h4>
+              <p>After quarantine, guided cleanup &mdash; registry autoruns, scheduled tasks, browser hijacks, residual files. Don't just stop the threat; undo the damage.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRUST + ENTERPRISE CREDIBILITY -->
+        <div class="roadmap-category">
+          <div class="roadmap-cat-header reveal">
+            <div class="roadmap-cat-icon trust">&#x1F3DB;</div>
+            <h3>Trust &amp; Enterprise Credibility</h3>
+            <span class="cat-count">6 features</span>
+          </div>
+          <div class="roadmap-grid">
+            <div class="roadmap-card reveal">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Tamper Protection</h4>
+              <p>Lock settings and rules behind admin + local PIN. Detect and alert on attempted disablement &mdash; malware can't silently turn off your defenses.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-1">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Signed Rule Packs</h4>
+              <p>Ship curated detection and rule updates with signature verification. Users know rules haven't been tampered with; MSPs can push trusted updates.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-2">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Local-First AI Copilot</h4>
+              <p>On-device model for triage summaries &mdash; "what happened + what to do next" &mdash; with optional cloud assist. Private by default, smart always.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-3">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Audit-Ready Reporting</h4>
+              <p>Export SOC-style reports (PDF / JSON) for incidents, scan history, and remediation steps. Hand it to your auditor or your client.</p>
+            </div>
+            <div class="roadmap-card reveal">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Compliance Profiles</h4>
+              <p>Presets mapped to CIS / NIST-lite controls for SMBs. One-click "Hardened Workstation" mode that enforces a vetted security baseline.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-1">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Secure Key Vault</h4>
+              <p>Encrypted backup for crypto keys + recovery phrase flow for the file encryption module. Keys are protected even if the host is compromised.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRODUCT POLISH -->
+        <div class="roadmap-category">
+          <div class="roadmap-cat-header reveal">
+            <div class="roadmap-cat-icon polish">&#x2728;</div>
+            <h3>Premium Product Polish</h3>
+            <span class="cat-count">4 features</span>
+          </div>
+          <div class="roadmap-grid">
+            <div class="roadmap-card reveal">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>First 10 Minutes Hardening Wizard</h4>
+              <p>Guided onboarding that walks new users through critical hardening steps in their first session. Instant security posture boost, zero expertise required.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-1">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Actionable Security Score</h4>
+              <p>Not just a number &mdash; "+12 points if you enable X, close Y port, update Z." Every score delta is tied to a specific, one-click fix.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-2">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Noise Reduction</h4>
+              <p>Confidence levels + deduped alerts to kill alert fatigue. Only surface what matters, with context, so users actually read the alerts.</p>
+            </div>
+            <div class="roadmap-card reveal reveal-delay-3">
+              <span class="roadmap-badge badge-building">Building</span>
+              <h4>Benchmark Mode</h4>
+              <p>Compare your device posture against anonymized local baselines (opt-in). See where you stand vs. similar setups &mdash; gamified security that drives action.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================== COMPARISON ============================== -->
+    <section class="section" id="compare">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">Head to Head</div>
+          <h2 class="section-title">SecurityPrime vs. the big names.</h2>
+          <p class="section-subtitle">Feature and architecture comparison. Not a certified lab test &mdash; a transparent look at what each product offers.</p>
+        </div>
+        <div class="table-wrap reveal">
+          <table>
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>SecurityPrime</th>
+                <th>McAfee</th>
+                <th>Norton</th>
+                <th>MS Defender</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Malware Scanning</td>
+                <td class="t-sp">Real-time + YARA + Memory Forensics</td>
+                <td class="t-yes">Full suite</td>
+                <td class="t-yes">Full suite</td>
+                <td class="t-yes">Built-in</td>
+              </tr>
+              <tr>
+                <td>Firewall Control</td>
+                <td class="t-sp">Native Windows Firewall (netsh)</td>
+                <td class="t-yes">Own layer</td>
+                <td class="t-yes">Own layer</td>
+                <td class="t-partial">Limited UI</td>
+              </tr>
+              <tr>
+                <td>File Encryption</td>
+                <td class="t-sp">AES-256-GCM built in</td>
+                <td class="t-partial">Some products</td>
+                <td class="t-partial">Some products</td>
+                <td class="t-no">BitLocker separate</td>
+              </tr>
+              <tr>
+                <td>Vulnerability / CVE</td>
+                <td class="t-sp">CVE-aware scanner</td>
+                <td class="t-yes">Premium only</td>
+                <td class="t-yes">Premium only</td>
+                <td class="t-partial">Limited</td>
+              </tr>
+              <tr>
+                <td>Tamper Detection</td>
+                <td class="t-sp">Integrity + anomaly + secure boot</td>
+                <td class="t-yes">Yes</td>
+                <td class="t-yes">Yes</td>
+                <td class="t-partial">Partial</td>
+              </tr>
+              <tr>
+                <td>MSP / Multi-Tenant</td>
+                <td class="t-sp">Rust server + dashboard</td>
+                <td class="t-no">Enterprise only</td>
+                <td class="t-no">Enterprise only</td>
+                <td class="t-no">Intune separate</td>
+              </tr>
+              <tr>
+                <td>Open &amp; Auditable</td>
+                <td class="t-sp">Fully inspectable source</td>
+                <td class="t-no">Proprietary</td>
+                <td class="t-no">Proprietary</td>
+                <td class="t-partial">Closed source</td>
+              </tr>
+              <tr>
+                <td>Zero Telemetry</td>
+                <td class="t-sp">100% on-device</td>
+                <td class="t-partial">Varies</td>
+                <td class="t-partial">Varies</td>
+                <td class="t-partial">Cloud tied</td>
+              </tr>
+              <tr>
+                <td>Cross-Platform</td>
+                <td class="t-sp">Win / Mac / Linux</td>
+                <td class="t-partial">Win / Mac</td>
+                <td class="t-partial">Win / Mac</td>
+                <td class="t-no">Windows only</td>
+              </tr>
+              <tr>
+                <td>AI Security Agent</td>
+                <td class="t-sp">Ollama-powered</td>
+                <td class="t-partial">Limited</td>
+                <td class="t-partial">Limited</td>
+                <td class="t-no">None</td>
+              </tr>
+              <tr>
+                <td>Autonomous Response</td>
+                <td class="t-sp">Auto playbooks (building)</td>
+                <td class="t-partial">Premium only</td>
+                <td class="t-partial">Premium only</td>
+                <td class="t-no">Manual only</td>
+              </tr>
+              <tr>
+                <td>Behavior Detection</td>
+                <td class="t-sp">Chain analysis (building)</td>
+                <td class="t-yes">Signature + heuristic</td>
+                <td class="t-yes">SONAR</td>
+                <td class="t-partial">Basic heuristics</td>
+              </tr>
+              <tr>
+                <td>EDR / Threat Timeline</td>
+                <td class="t-sp">EDR-lite timeline (building)</td>
+                <td class="t-no">Separate product</td>
+                <td class="t-no">Separate product</td>
+                <td class="t-partial">MDE separate</td>
+              </tr>
+              <tr>
+                <td>Zero-Trust App Control</td>
+                <td class="t-sp">Hash + signer + parent (building)</td>
+                <td class="t-no">Enterprise only</td>
+                <td class="t-no">Enterprise only</td>
+                <td class="t-partial">AppLocker separate</td>
+              </tr>
+              <tr>
+                <td>Audit-Ready Reports</td>
+                <td class="t-sp">PDF/JSON SOC reports (building)</td>
+                <td class="t-partial">Basic reports</td>
+                <td class="t-partial">Basic reports</td>
+                <td class="t-no">Event Viewer only</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== CTA ============================== -->
+    <section class="cta">
+      <div class="container reveal">
+        <h2>Don't take our word for it.<br>Read the code.</h2>
+        <p>Every feature, every module, every test &mdash; open and inspectable on GitHub.</p>
+        <div class="hero-buttons" style="margin-top:1.5rem">
+          <a class="btn btn-primary" href="https://github.com/AaronGrace978/SecurityPrime">View on GitHub</a>
+          <a class="btn btn-secondary" href="./docs/USER_GUIDE.md">Read the Docs</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== FOOTER ============================== -->
+    <footer>
+      <p><strong style="color:var(--text)">SecurityPrime</strong> by <a href="https://github.com/AaronGrace978" target="_blank" rel="noopener noreferrer">AaronGrace978</a> &mdash; Built with Tauri, Svelte &amp; Rust. <a href="https://bostonai.io" target="_blank" rel="noopener noreferrer" class="footer-tag">BostonAI.io</a></p>
+      <div class="footer-links">
+        <a href="https://github.com/AaronGrace978/SecurityPrime">Repo</a>
+        <a href="https://github.com/AaronGrace978" target="_blank" rel="noopener noreferrer">AaronGrace978</a>
+        <a href="./README.md">README</a>
+        <a href="./QUICKSTART.md">Quick Start</a>
+        <a href="./docs/USER_GUIDE.md">User Guide</a>
+        <a href="./docs/API_REFERENCE.md">API Docs</a>
+        <a href="https://bostonai.io" target="_blank" rel="noopener noreferrer">BostonAI.io</a>
+      </div>
+    </footer>
+
+  </div><!-- /.page -->
+
+  <!-- ============================== SCRIPTS ============================== -->
+  <script>
+  /* ---------- Particle Canvas ---------- */
+  (function() {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let w, h, particles = [], mouse = { x: null, y: null };
+
+    function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+      constructor() { this.reset(); }
+      reset() {
+        this.x = Math.random() * w;
+        this.y = Math.random() * h;
+        this.vx = (Math.random() - 0.5) * 0.3;
+        this.vy = (Math.random() - 0.5) * 0.3;
+        this.r = Math.random() * 1.5 + 0.5;
+        this.alpha = Math.random() * 0.5 + 0.1;
+      }
+      update() {
+        this.x += this.vx; this.y += this.vy;
+        if (this.x < 0 || this.x > w) this.vx *= -1;
+        if (this.y < 0 || this.y > h) this.vy *= -1;
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 217, 255, ${this.alpha})`;
+        ctx.fill();
+      }
+    }
+
+    const count = Math.min(80, Math.floor(w * h / 15000));
+    for (let i = 0; i < count; i++) particles.push(new Particle());
+
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+    function drawLines() {
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 150) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(0, 217, 255, ${0.08 * (1 - dist / 150)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+        // Mouse interaction
+        if (mouse.x !== null) {
+          const dx = particles[i].x - mouse.x;
+          const dy = particles[i].y - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 200) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.strokeStyle = `rgba(0, 217, 255, ${0.15 * (1 - dist / 200)})`;
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, w, h);
+      particles.forEach(p => { p.update(); p.draw(); });
+      drawLines();
+      requestAnimationFrame(animate);
+    }
+    animate();
+  })();
+
+  /* ---------- Navbar scroll ---------- */
+  window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+  });
+
+  /* ---------- Scroll Reveal ---------- */
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) entry.target.classList.add('visible');
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  /* ---------- Counter Animation ---------- */
+  const counterObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.getAttribute('data-target'));
+        if (!target) return;
+        let current = 0;
+        const step = Math.ceil(target / 40);
+        const interval = setInterval(() => {
+          current += step;
+          if (current >= target) { current = target; clearInterval(interval); }
+          el.textContent = current;
+        }, 30);
+        counterObserver.unobserve(el);
+      }
+    });
+  }, { threshold: 0.5 });
+  document.querySelectorAll('.stat-number[data-target]').forEach(el => counterObserver.observe(el));
+  </script>
+</body>
+</html>

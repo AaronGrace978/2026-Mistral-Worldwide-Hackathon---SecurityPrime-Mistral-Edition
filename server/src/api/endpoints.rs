@@ -43,11 +43,15 @@ pub async fn get(
 
 /// Delete an endpoint
 pub async fn delete(
-    Extension(_state): Extension<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
     _user: AuthUser,
-    Path(_id): Path<Uuid>,
+    Path(id): Path<Uuid>,
 ) -> Result<Json<()>> {
-    // TODO: Implement endpoint deletion
+    let _ = state.db.get_endpoint(id).await?
+        .ok_or(AppError::NotFound("Endpoint not found".to_string()))?;
+    
+    state.db.delete_endpoint(id).await?;
+    
     Ok(Json(()))
 }
 
@@ -63,11 +67,13 @@ pub async fn heartbeat(
     // Update or create endpoint
     let _endpoint = state.db.upsert_endpoint(&req, org.id).await?;
     
-    // Return response with any pending commands
+    let commands = state.db.get_pending_commands(&req.endpoint_id).await
+        .unwrap_or_default();
+    
     Ok(Json(HeartbeatResponse {
         success: true,
         server_time: chrono::Utc::now(),
-        commands: vec![], // TODO: Fetch pending commands
+        commands,
     }))
 }
 
@@ -85,7 +91,8 @@ pub async fn report_events(
         if event.severity == "high" || event.severity == "critical" {
             let alert_req = CreateAlertRequest {
                 organization_id: org.id,
-                endpoint_id: None, // TODO: Get endpoint ID from endpoint_id string
+                endpoint_id: state.db.get_endpoint_uuid(&req.endpoint_id, org.id).await
+                    .unwrap_or(None),
                 title: format!("{}: {}", event.event_type, event.source),
                 description: event.description.clone(),
                 severity: match event.severity.as_str() {

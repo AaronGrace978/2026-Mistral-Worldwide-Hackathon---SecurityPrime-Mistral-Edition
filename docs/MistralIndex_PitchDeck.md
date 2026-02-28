@@ -87,7 +87,7 @@ We use Mistral models as the **core reasoning layer** — not a chatbot, but the
 |-------|------------|
 | Frontend | SvelteKit 2, TypeScript, Tailwind (cyberpunk theme) |
 | Backend | Rust, Tauri 1.6, Tokio |
-| AI | Mistral models via Ollama (cloud + local) |
+| AI | Mistral models via direct API (api.mistral.ai) + Ollama (cloud/local) |
 | Database | SQLite (local), PostgreSQL (MSP) |
 | Security | OS keychain, AES-256-GCM, bcrypt, JWT |
 

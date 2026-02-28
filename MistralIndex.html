@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MistralIndex — SecurityPrime Pitch Deck | Mistral Hackathon 2026</title>
+  <meta name="description" content="SecurityPrime: AI-Native Endpoint Security. Trust Through Observability. Mistral AI Worldwide Hackathon 2026 submission." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mistral-red: #e10500;
+      --mistral-orange-dark: #fa500f;
+      --mistral-orange: #ff8205;
+      --mistral-orange-light: #ffaf00;
+      --mistral-yellow: #ffd800;
+      --mistral-gradient: linear-gradient(135deg, #e10500, #fa500f, #ff8205, #ffaf00, #ffd800);
+      --bg: #0a0a0a;
+      --surface: rgba(30, 30, 30, 0.95);
+      --border: rgba(255, 130, 5, 0.25);
+      --text: #fff0eb;
+      --muted: #b8b0a0;
+      --glow: 0 0 30px rgba(255, 130, 5, 0.2);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .orb {
+      position: fixed;
+      width: 500px; height: 500px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 { background: var(--mistral-orange); top: -150px; left: -100px; }
+    .orb-2 { background: var(--mistral-red); bottom: -150px; right: -100px; }
+
+    .page { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 3rem 2rem 6rem; }
+
+    header {
+      text-align: center;
+      margin-bottom: 4rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    header .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--mistral-orange);
+      margin-bottom: 1rem;
+    }
+    header h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 0.5rem;
+    }
+    header h1 .gradient {
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header .tagline {
+      font-size: 1.15rem;
+      color: var(--muted);
+    }
+
+    .slide {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 3rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+    }
+    .slide:hover { box-shadow: var(--glow); }
+    .slide-num {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--mistral-orange);
+      margin-bottom: 0.75rem;
+    }
+    .slide h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      color: var(--text);
+    }
+    .slide h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin: 1.5rem 0 0.75rem;
+    }
+    .slide ul {
+      list-style: none;
+      padding: 0;
+    }
+    .slide li {
+      padding: 0.35rem 0;
+      padding-left: 1.25rem;
+      position: relative;
+    }
+    .slide li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.65em;
+      width: 5px;
+      height: 5px;
+      background: var(--mistral-orange);
+      border-radius: 50%;
+    }
+    .slide p { margin-bottom: 1rem; color: var(--muted); }
+    .slide p:last-child { margin-bottom: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.6rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    th {
+      font-weight: 600;
+      color: var(--mistral-orange);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    td { color: var(--muted); }
+    td:first-child { color: var(--text); font-weight: 500; }
+
+    .cta {
+      text-align: center;
+      padding: 3rem 2rem;
+      margin-top: 2rem;
+    }
+    .cta a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.9rem 2rem;
+      background: var(--mistral-gradient);
+      color: #000;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 12px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cta a:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--glow);
+    }
+    .cta .links {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .cta .links a {
+      background: transparent;
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .cta .links a:hover { color: var(--mistral-orange); }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="page">
+    <header>
+      <div class="badge">Mistral AI Worldwide Hackathon 2026</div>
+      <h1><span class="gradient">SecurityPrime</span></h1>
+      <p class="tagline">AI-Native Endpoint Security. Trust Through Observability.</p>
+    </header>
+
+    <div class="slide">
+      <div class="slide-num">Slide 1</div>
+      <h2>The Problem</h2>
+      <p><strong>Endpoint security is broken.</strong></p>
+      <ul>
+        <li>Enterprise tools are bloated, expensive, and opaque</li>
+        <li>SMBs and individuals get left behind</li>
+        <li>AI security features are black boxes — users can't verify what data leaves their machine</li>
+        <li>No single tool combines real protection with transparency</li>
+      </ul>
+    </div>
+
+    <div class="slide">
+      <div class="slide-num">Slide 2</div>
+      <h2>The Solution — SecurityPrime</h2>
+      <p>A full-featured cybersecurity suite where <strong>Mistral AI is the brain</strong>, not a bolt-on.</p>
+      <ul>
+        <li><strong>Real security</strong> — Malware scanning, firewall, encryption, vulnerability checks, network monitoring</li>
+        <li><strong>Mistral-powered intelligence</strong> — Threat analysis, behavioral detection, remediation scripts, security audits</li>
+        <li><strong>Trust through observability</strong> — Users see exactly which endpoints our AI uses; everything else is blocked</li>
+      </ul>
+    </div>
+
+    <div class="slide">
+      <div class="slide-num">Slide 3</div>
+      <h2>Why Mistral?</h2>
+      <p>We use Mistral models as the <strong>core reasoning layer</strong> — not a chatbot, but the engine that:</p>
+      <table>
+        <thead><tr><th>Model</th><th>Role</th><th>Use Case</th></tr></thead>
+        <tbody>
+          <tr><td>Mistral Large 3</td><td>Deep Analyst</td><td>Full threat assessment, CVE analysis, security audits</td></tr>
+          <tr><td>Ministral</td><td>Fast Triage</td><td>Quick risk classification, alert prioritization</td></tr>
+          <tr><td>Devstral Small 2</td><td>Code & Remediation</td><td>Firewall rule generation, script-based fixes</td></tr>
+          <tr><td>Pixtral</td><td>Visual Inspector</td><td>Screenshot analysis, phishing detection</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Multi-model routing</strong> — Right model for each task. Fast models for simple questions; large models for deep analysis.</p>
+    </div>
+
+    <div class="slide">
+      <div class="slide-num">Slide 4</div>
+      <h2>Trust Through Observability (Little Snitch Integration)</h2>
+      <p><strong>Our differentiator:</strong> users can verify every network destination.</p>
+      <ul>
+        <li><strong>Recommended Rules Engine</strong> — Curated allow/deny rules for AI endpoints, OS updates, telemetry</li>
+        <li><strong>Domain Trust Classification</strong> — Live connections classified as trusted / unknown / suspicious</li>
+        <li><strong>Export to Little Snitch</strong> — One-click .lsrules profile for macOS users</li>
+        <li><strong>Transparency</strong> — "Here's what SecurityPrime's AI is allowed to reach. Everything else is blocked."</li>
+      </ul>
+      <p><em>SecurityPrime pairs with Little Snitch on macOS for process-level outbound visibility and consent-driven network control.</em></p>
+    </div>
+
+    <div class="slide">
+      <div class="slide-num">Slide 5</div>
+      <h2>Feature Highlights</h2>
+      <h3>Core Security</h3>
+      <ul>
+        <li>Malware Scanner (quick/full/custom, memory forensics, YARA)</li>
+        <li>Firewall Management (Windows Firewall via netsh)</li>
+        <li>File Encryption (AES-256-GCM)</li>
+        <li>Vulnerability Scanner (CVE-aware)</li>
+        <li>Network Monitor, Tamper Detection, Process Isolation, Security Hardening</li>
+      </ul>
+      <h3>AI-Powered</h3>
+      <ul>
+        <li>Mistral Security Copilot (streaming chat)</li>
+        <li>Directory scanning, threat prediction, comprehensive AI system audit</li>
+      </ul>
+      <h3>Enterprise</h3>
+      <ul>
+        <li>MSP Management Server, GDPR & HIPAA compliance, per-endpoint licensing, plugin system</li>
+      </ul>
+    </div>
+
+    <div class="slide">
+      <div class="slide-num">Slide 6</div>
+      <h2>Tech Stack</h2>
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+        <tbody>
+          <tr><td>Frontend</td><td>SvelteKit 2, TypeScript, Tailwind (cyberpunk theme)</td></tr>
+          <tr><td>Backend</td><td>Rust, Tauri 1.6, Tokio</td></tr>
+          <tr><td>AI</td><td>Mistral models via Ollama (cloud + local)</td></tr>
+          <tr><td>Database</td><td>SQLite (local), PostgreSQL (MSP)</td></tr>
+          <tr><td>Security</td><td>OS keychain, AES-256-GCM, bcrypt, JWT</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="slide">
+      <div class="slide-num">Slide 7</div>
+      <h2>Demo Flow</h2>
+      <ol style="list-style: decimal; padding-left: 1.5rem; color: var(--muted);">
+        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text);">Dashboard</strong> — Security score, module status, live activity</li>
+        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text);">AI Copilot</strong> — Ask "What's the biggest risk on my system?" — Mistral analyzes and responds</li>
+        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text);">Network Monitor</strong> — See active connections; Little Snitch Companion shows rules + domain trust</li>
+        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text);">Export</strong> — Generate .lsrules profile for Little Snitch import</li>
+        <li><strong style="color: var(--text);">Scanner</strong> — Run a scan; AI explains findings and suggests remediation</li>
+      </ol>
+    </div>
+
+    <div class="slide">
+      <div class="slide-num">Slide 8</div>
+      <h2>Why We'll Win</h2>
+      <ul>
+        <li><strong>Real product</strong> — 17+ Rust modules, integration tests, E2E, deployable installers</li>
+        <li><strong>Mistral-native</strong> — AI is core architecture, not an add-on</li>
+        <li><strong>Differentiated</strong> — Trust through observability; Little Snitch integration</li>
+        <li><strong>Complete</strong> — From scanning to compliance to MSP management</li>
+        <li><strong>Ship-ready</strong> — Clone, build, run. It works.</li>
+      </ul>
+    </div>
+
+    <div class="slide">
+      <div class="slide-num">Slide 9</div>
+      <h2>Call to Action</h2>
+      <p><strong>SecurityPrime</strong> — AI-native endpoint security you can trust.</p>
+      <div class="cta">
+        <a href="https://github.com/AaronGrace978/SecurityPrime" target="_blank" rel="noopener">View on GitHub</a>
+        <div class="links">
+          <a href="https://github.com/AaronGrace978/SecurityPrime" target="_blank" rel="noopener">Repo</a>
+          <a href="https://aarongrace978.github.io/SecurityPrime-Coming-soon/" target="_blank" rel="noopener">Landing</a>
+          <a href="https://github.com/AaronGrace978" target="_blank" rel="noopener">Aaron Grace</a>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Built with Rust, Svelte, and Mistral AI.
+    </footer>
+  </div>
+</body>
+</html>

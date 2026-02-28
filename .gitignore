@@ -10,6 +10,7 @@ node_modules
 
 # Tauri
 src-tauri/target
+src-tauri/target_flagship_check
 
 # Server build outputs
 server/target

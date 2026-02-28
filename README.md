@@ -55,7 +55,7 @@ The routing engine automatically selects the right model for each task — fast 
 |-------|-----------|
 | Frontend | SvelteKit 2, TypeScript, Tailwind CSS (cyberpunk theme) |
 | Backend | Rust, Tauri 1.6, Tokio async runtime |
-| AI | Mistral models via Ollama (cloud + local) |
+| AI | Mistral models via direct API (api.mistral.ai) + Ollama (cloud/local) |
 | Database | SQLite (local), PostgreSQL (MSP server) |
 | Security | OS keychain (keyring), AES-256-GCM, bcrypt, JWT |
 | Desktop | System tray, Windows Service, custom protocol handler |
@@ -90,9 +90,13 @@ npm run tauri:dev
 
 ### Configuration
 
-1. **API Key** — Set your Ollama Cloud API key via the in-app Settings panel (stored in your OS keychain, never in files)
-2. **Models** — Configure model routing in `config/ollama_cloud_config.json`
-3. **MSP Server** — Set `DATABASE_URL`, `JWT_SECRET`, and `PORT` in `.env` for managed deployments
+1. **Mistral API Key (recommended)** — Set your Mistral API key via the in-app Settings panel or in `.env` as `MISTRAL_API_KEY`. This uses `api.mistral.ai` directly — no Ollama needed.
+2. **Ollama Cloud API Key (alternative)** — Set your Ollama Cloud API key via Settings or `.env` as `OLLAMA_CLOUD_API_KEY`. Uses Mistral models via Ollama's infrastructure.
+3. **Local Ollama (offline)** — Install [Ollama](https://ollama.com/) and pull a Mistral model. No API key needed.
+4. **Models** — Configure model routing in `config/ollama_cloud_config.json`
+5. **MSP Server** — Set `DATABASE_URL`, `JWT_SECRET`, and `PORT` in `.env` for managed deployments
+
+> **For hackathon judges:** Just paste your Mistral API key in Settings > AI API Keys. That's it — the app will use Mistral's API directly.
 
 ## Architecture
 
@@ -132,9 +136,13 @@ SecurityPrime/
 - SQL injection protection via parameterized queries throughout
 - No secrets are stored in configuration files or source code
 
+## Credits
+
+Open-source libraries and APIs are credited in [ATTRIBUTION.md](ATTRIBUTION.md).
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
 
 ---
 

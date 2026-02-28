@@ -9,6 +9,7 @@ use thiserror::Error;
 
 const SERVICE_NAME: &str = "com.cybersecurityprime.app";
 const OLLAMA_API_KEY: &str = "ollama_api_key";
+const MISTRAL_API_KEY: &str = "mistral_api_key";
 
 #[derive(Debug, Error)]
 pub enum SecureStorageError {
@@ -79,4 +80,21 @@ pub fn delete_ollama_api_key() -> Result<(), SecureStorageError> {
 
 pub fn ollama_api_key_exists() -> bool {
     api_key_exists(OLLAMA_API_KEY)
+}
+
+// Convenience functions for Mistral API key (direct api.mistral.ai)
+pub fn store_mistral_api_key(api_key: &str) -> Result<(), SecureStorageError> {
+    store_api_key(MISTRAL_API_KEY, api_key)
+}
+
+pub fn get_mistral_api_key() -> Result<String, SecureStorageError> {
+    get_api_key(MISTRAL_API_KEY)
+}
+
+pub fn delete_mistral_api_key() -> Result<(), SecureStorageError> {
+    delete_api_key(MISTRAL_API_KEY)
+}
+
+pub fn mistral_api_key_exists() -> bool {
+    api_key_exists(MISTRAL_API_KEY)
 }

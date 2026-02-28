@@ -1,4 +1,16 @@
 {
+  "mistral_direct": {
+    "enabled": true,
+    "api_base": "https://api.mistral.ai/v1",
+    "models": {
+      "mistral-large-latest": "Deep analysis, threat assessment, security audits",
+      "ministral-8b-latest": "Fast triage, quick classification",
+      "devstral-small-latest": "Code generation, remediation scripts",
+      "pixtral-12b-2409": "Visual analysis, screenshot inspection",
+      "codestral-latest": "Code-focused tasks"
+    },
+    "notes": "When a Mistral API key is stored in the OS keychain, SecurityPrime uses api.mistral.ai directly. No Ollama required."
+  },
   "ollama_cloud": {
     "enabled": true,
     "api_key": "",

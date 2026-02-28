@@ -1553,6 +1553,34 @@ export async function deleteOllamaApiKey(): Promise<void> {
 	return safeInvoke<void>('delete_ollama_api_key');
 }
 
+/**
+ * Store Mistral API key securely in OS keychain (for direct api.mistral.ai access)
+ */
+export async function storeMistralApiKey(apiKey: string): Promise<void> {
+	return safeInvoke<void>('store_mistral_api_key', { apiKey });
+}
+
+/**
+ * Check if Mistral API key exists in secure storage
+ */
+export async function hasMistralApiKey(): Promise<boolean> {
+	return safeInvoke<boolean>('has_mistral_api_key');
+}
+
+/**
+ * Delete Mistral API key from secure storage
+ */
+export async function deleteMistralApiKey(): Promise<void> {
+	return safeInvoke<void>('delete_mistral_api_key');
+}
+
+/**
+ * Get which AI provider is currently active: "mistral", "ollama-cloud", or "ollama-local"
+ */
+export async function getAiProvider(): Promise<string> {
+	return safeInvoke<string>('get_ai_provider');
+}
+
 // ============================================================================
 // Licensing API
 // ============================================================================

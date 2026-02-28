@@ -1,5 +1,5 @@
 // Cyber Security Prime - AI Security Agent Module
-// Powered by Ollama - Local and Cloud AI Models
+// Powered by Mistral AI (direct API + Ollama Cloud/Local)
 // Supports streaming responses via Tauri events
 
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,38 @@ use std::collections::HashMap;
 const MISTRAL_DEFAULT_MODEL: &str = "mistral-large-3:675b";
 const MISTRAL_FAST_MODEL: &str = "ministral:8b";
 const MISTRAL_DEEP_MODEL: &str = "mistral-large-3:675b";
+
+const MISTRAL_API_BASE: &str = "https://api.mistral.ai/v1";
+
+/// Map Ollama-style model names to Mistral API model identifiers
+fn ollama_to_mistral_model(ollama_name: &str) -> &'static str {
+    let normalized = ollama_name.to_lowercase();
+    if normalized.contains("mistral-large") {
+        "mistral-large-latest"
+    } else if normalized.contains("ministral") && normalized.contains("8b") {
+        "ministral-8b-latest"
+    } else if normalized.contains("devstral") {
+        "devstral-small-latest"
+    } else if normalized.contains("pixtral") {
+        "pixtral-12b-2409"
+    } else if normalized.contains("codestral") {
+        "codestral-latest"
+    } else if normalized.contains("mixtral") {
+        "open-mixtral-8x7b"
+    } else {
+        "mistral-large-latest"
+    }
+}
+
+/// Check if a direct Mistral API key is available
+fn has_mistral_direct_key() -> bool {
+    secure_storage::mistral_api_key_exists()
+}
+
+/// Get the direct Mistral API key
+fn get_mistral_direct_key() -> Option<String> {
+    secure_storage::get_mistral_api_key().ok()
+}
 
 // ============================================================================
 // Types
@@ -384,6 +416,52 @@ impl OllamaClient {
     }
 
     pub async fn test_connection(&self) -> Result<AgentStatus, String> {
+        // If Mistral direct API key is available, use that as primary
+        if has_mistral_direct_key() {
+            let config = self.config.read();
+            let current_model = normalize_mistral_model(Some(config.default_model.clone()), MISTRAL_DEFAULT_MODEL);
+            
+            let mistral_models = vec![
+                ModelInfo {
+                    name: "mistral-large-latest".to_string(),
+                    size: None,
+                    modified_at: None,
+                    digest: Some("mistral-api".to_string()),
+                },
+                ModelInfo {
+                    name: "ministral-8b-latest".to_string(),
+                    size: None,
+                    modified_at: None,
+                    digest: Some("mistral-api".to_string()),
+                },
+                ModelInfo {
+                    name: "devstral-small-latest".to_string(),
+                    size: None,
+                    modified_at: None,
+                    digest: Some("mistral-api".to_string()),
+                },
+                ModelInfo {
+                    name: "pixtral-12b-2409".to_string(),
+                    size: None,
+                    modified_at: None,
+                    digest: Some("mistral-api".to_string()),
+                },
+                ModelInfo {
+                    name: "codestral-latest".to_string(),
+                    size: None,
+                    modified_at: None,
+                    digest: Some("mistral-api".to_string()),
+                },
+            ];
+            
+            return Ok(AgentStatus {
+                connected: true,
+                available_models: mistral_models,
+                current_model: ollama_to_mistral_model(&current_model).to_string(),
+                session_active: false,
+            });
+        }
+
         let (current_model, headers, is_cloud) = {
             let config = self.config.read();
             (
@@ -532,6 +610,89 @@ impl OllamaClient {
             log::error!("Chat failed ({}): {}", status, body);
             Err(format!("Chat failed ({}): {}", status, body))
         }
+    }
+
+    /// Chat using the direct Mistral API (api.mistral.ai)
+    async fn chat_mistral_direct(
+        &self,
+        messages: Vec<ChatMessage>,
+        model: Option<String>,
+        temperature: Option<f32>,
+    ) -> Result<ChatResponse, String> {
+        let api_key = get_mistral_direct_key()
+            .ok_or("Mistral API key not found in secure storage")?;
+
+        let ollama_model = {
+            let config = self.config.read();
+            normalize_mistral_model(model, &config.default_model)
+        };
+        let mistral_model = ollama_to_mistral_model(&ollama_model);
+
+        let url = format!("{}/chat/completions", MISTRAL_API_BASE);
+
+        let body = serde_json::json!({
+            "model": mistral_model,
+            "messages": messages,
+            "temperature": temperature.unwrap_or(0.7),
+            "max_tokens": 4096,
+            "stream": false,
+        });
+
+        log::info!("Sending chat to Mistral API — model: {} (mapped from {})", mistral_model, ollama_model);
+
+        let response = self.client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("Mistral API request failed: {}", e))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            log::error!("Mistral API error ({}): {}", status, body);
+            return Err(format!("Mistral API error ({}): {}", status, body));
+        }
+
+        let data: serde_json::Value = response.json().await
+            .map_err(|e| format!("Failed to parse Mistral API response: {}", e))?;
+
+        let content = data["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+        Ok(ChatResponse {
+            model: mistral_model.to_string(),
+            message: ChatMessage {
+                role: "assistant".to_string(),
+                content,
+            },
+            done: true,
+            prompt_eval_count: data["usage"]["prompt_tokens"].as_i64().map(|v| v as i32),
+            eval_count: data["usage"]["completion_tokens"].as_i64().map(|v| v as i32),
+        })
+    }
+
+    /// Smart chat: tries direct Mistral API first, falls back to Ollama
+    pub async fn smart_chat(
+        &self,
+        messages: Vec<ChatMessage>,
+        model: Option<String>,
+        temperature: Option<f32>,
+    ) -> Result<ChatResponse, String> {
+        if has_mistral_direct_key() {
+            log::info!("Using direct Mistral API (api.mistral.ai)");
+            match self.chat_mistral_direct(messages.clone(), model.clone(), temperature).await {
+                Ok(response) => return Ok(response),
+                Err(e) => {
+                    log::warn!("Mistral direct API failed, falling back to Ollama: {}", e);
+                }
+            }
+        }
+        self.chat(messages, model, temperature).await
     }
 
     pub fn update_config(&self, new_config: OllamaConfig) {
@@ -782,8 +943,7 @@ pub async fn chat_with_agent(message: String, model: Option<String>) -> Result<S
         }
     };
 
-    // Get response from Ollama
-    let response = client.chat(messages, model_to_use, Some(0.7)).await?;
+    let response = client.smart_chat(messages, model_to_use, Some(0.7)).await?;
 
     // Save assistant response
     {
@@ -842,7 +1002,7 @@ Respond ONLY with the JSON, no other text."#,
         config.deep_model.clone()
     };
 
-    let response = client.chat(messages, Some(deep_model), Some(0.3)).await?;
+    let response = client.smart_chat(messages, Some(deep_model), Some(0.3)).await?;
 
     // Parse the JSON response
     let content = response.message.content.trim();
@@ -875,7 +1035,7 @@ pub async fn get_security_recommendations() -> Result<Vec<String>, String> {
         },
     ];
 
-    let response = client.chat(messages, None, Some(0.5)).await?;
+    let response = client.smart_chat(messages, None, Some(0.5)).await?;
     
     let content = response.message.content.trim();
     let json_content = if content.starts_with("[") {
@@ -1030,7 +1190,9 @@ pub async fn chat_with_agent_stream(
         }
     };
 
-    // Build streaming request
+    // Determine if we should use Mistral direct API or Ollama
+    let use_mistral_direct = has_mistral_direct_key();
+
     let (model_name, headers) = {
         let config = client.config.read();
         (
@@ -1038,23 +1200,47 @@ pub async fn chat_with_agent_stream(
             client.get_headers(),
         )
     };
-    let url = format!("{}/chat", client.get_api_base());
 
-    let request = ChatRequest {
-        model: model_name.clone(),
-        messages,
-        stream: true, // Enable streaming!
-        options: Some(ChatOptions {
-            temperature: Some(0.7),
-            num_predict: Some(4096),
-        }),
+    let (url, request_body, display_model) = if use_mistral_direct {
+        let api_key = get_mistral_direct_key().unwrap_or_default();
+        let mistral_model = ollama_to_mistral_model(&model_name).to_string();
+        let url = format!("{}/chat/completions", MISTRAL_API_BASE);
+        let body = serde_json::json!({
+            "model": mistral_model,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 4096,
+            "stream": true,
+        });
+        log::info!("Streaming via Mistral API — model: {}", mistral_model);
+        (url, (body, Some(api_key)), mistral_model)
+    } else {
+        let url = format!("{}/chat", client.get_api_base());
+        let request = ChatRequest {
+            model: model_name.clone(),
+            messages,
+            stream: true,
+            options: Some(ChatOptions {
+                temperature: Some(0.7),
+                num_predict: Some(4096),
+            }),
+        };
+        let body = serde_json::to_value(&request).unwrap_or_default();
+        log::info!("Streaming via Ollama — model: {}", model_name);
+        (url, (body, None), model_name.clone())
     };
 
     // Send streaming request
-    let response = client.client
-        .post(&url)
-        .headers(headers)
-        .json(&request)
+    let mut req_builder = client.client.post(&url);
+    if let Some(ref api_key) = request_body.1 {
+        req_builder = req_builder
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json");
+    } else {
+        req_builder = req_builder.headers(headers);
+    }
+    let response = req_builder
+        .json(&request_body.0)
         .send()
         .await
         .map_err(|e| e.to_string())?;
@@ -1076,29 +1262,48 @@ pub async fn chat_with_agent_stream(
             Ok(chunk) => {
                 let chunk_str = String::from_utf8_lossy(&chunk);
                 
-                // Ollama sends newline-delimited JSON
                 for line in chunk_str.lines() {
                     if line.is_empty() {
                         continue;
                     }
-                    
-                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(line) {
-                        if let Some(msg) = parsed.get("message") {
-                            if let Some(content) = msg.get("content").and_then(|c| c.as_str()) {
-                                full_response.push_str(content);
-                                
-                                // Emit streaming chunk to frontend
-                                let _ = app.emit_all("agent-stream", StreamChunk {
-                                    content: content.to_string(),
-                                    done: parsed.get("done").and_then(|d| d.as_bool()).unwrap_or(false),
-                                    model: model_name.clone(),
-                                });
+
+                    if use_mistral_direct {
+                        // Mistral API uses SSE: "data: {json}" or "data: [DONE]"
+                        let data_line = line.strip_prefix("data: ").unwrap_or(line);
+                        if data_line == "[DONE]" {
+                            break;
+                        }
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data_line) {
+                            if let Some(content) = parsed["choices"][0]["delta"]["content"].as_str() {
+                                if !content.is_empty() {
+                                    full_response.push_str(content);
+                                    let _ = app.emit_all("agent-stream", StreamChunk {
+                                        content: content.to_string(),
+                                        done: false,
+                                        model: display_model.clone(),
+                                    });
+                                }
+                            }
+                            if parsed["choices"][0]["finish_reason"].as_str() == Some("stop") {
+                                break;
                             }
                         }
-                        
-                        // Check if done
-                        if parsed.get("done").and_then(|d| d.as_bool()).unwrap_or(false) {
-                            break;
+                    } else {
+                        // Ollama sends newline-delimited JSON
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(line) {
+                            if let Some(msg) = parsed.get("message") {
+                                if let Some(content) = msg.get("content").and_then(|c| c.as_str()) {
+                                    full_response.push_str(content);
+                                    let _ = app.emit_all("agent-stream", StreamChunk {
+                                        content: content.to_string(),
+                                        done: parsed.get("done").and_then(|d| d.as_bool()).unwrap_or(false),
+                                        model: display_model.clone(),
+                                    });
+                                }
+                            }
+                            if parsed.get("done").and_then(|d| d.as_bool()).unwrap_or(false) {
+                                break;
+                            }
                         }
                     }
                 }
@@ -1124,7 +1329,7 @@ pub async fn chat_with_agent_stream(
     let _ = app.emit_all("agent-stream-done", StreamChunk {
         content: String::new(),
         done: true,
-        model: model_name,
+        model: display_model,
     });
 
     Ok(full_response)
@@ -1159,6 +1364,38 @@ pub async fn has_ollama_api_key() -> Result<bool, String> {
 pub async fn delete_ollama_api_key() -> Result<(), String> {
     secure_storage::delete_ollama_api_key()
         .map_err(|e| format!("Failed to delete API key: {}", e))
+}
+
+/// Store Mistral API key securely in OS keychain (for direct api.mistral.ai access)
+#[tauri::command]
+pub async fn store_mistral_api_key(api_key: String) -> Result<(), String> {
+    secure_storage::store_mistral_api_key(&api_key)
+        .map_err(|e| format!("Failed to store Mistral API key: {}", e))
+}
+
+/// Check if Mistral API key exists in secure storage
+#[tauri::command]
+pub async fn has_mistral_api_key() -> Result<bool, String> {
+    Ok(secure_storage::mistral_api_key_exists())
+}
+
+/// Delete Mistral API key from secure storage
+#[tauri::command]
+pub async fn delete_mistral_api_key() -> Result<(), String> {
+    secure_storage::delete_mistral_api_key()
+        .map_err(|e| format!("Failed to delete Mistral API key: {}", e))
+}
+
+/// Get which AI provider is currently active
+#[tauri::command]
+pub async fn get_ai_provider() -> Result<String, String> {
+    if has_mistral_direct_key() {
+        Ok("mistral".to_string())
+    } else if secure_storage::ollama_api_key_exists() {
+        Ok("ollama-cloud".to_string())
+    } else {
+        Ok("ollama-local".to_string())
+    }
 }
 
 // ============================================================================

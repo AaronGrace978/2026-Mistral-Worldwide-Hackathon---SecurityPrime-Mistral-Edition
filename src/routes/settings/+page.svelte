@@ -26,7 +26,11 @@
 		Info,
 		Github,
 		Heart,
-		ExternalLink
+		ExternalLink,
+		Key,
+		Check,
+		X,
+		Zap
 	} from 'lucide-svelte';
 
 	function openGitHub() { open('https://github.com/AaronGrace978/SecurityPrime'); }
@@ -45,6 +49,84 @@
 	let checkingUpdates = false;
 	let updateAvailable = false;
 
+	// API Key state
+	let mistralKeyInput = '';
+	let ollamaKeyInput = '';
+	let hasMistralKey = false;
+	let hasOllamaKey = false;
+	let activeProvider = 'unknown';
+	let savingMistralKey = false;
+	let savingOllamaKey = false;
+	let keyMsg = '';
+
+	async function loadApiKeyStatus() {
+		try {
+			hasMistralKey = await api.hasMistralApiKey();
+			hasOllamaKey = await api.hasOllamaApiKey();
+			activeProvider = await api.getAiProvider();
+		} catch (e) {
+			console.error('Failed to load API key status:', e);
+		}
+	}
+
+	async function saveMistralKey() {
+		if (!mistralKeyInput.trim()) return;
+		savingMistralKey = true;
+		try {
+			await api.storeMistralApiKey(mistralKeyInput.trim());
+			hasMistralKey = true;
+			mistralKeyInput = '';
+			keyMsg = 'Mistral API key saved securely.';
+			activeProvider = await api.getAiProvider();
+			setTimeout(() => keyMsg = '', 3000);
+		} catch (e) {
+			keyMsg = 'Failed to save Mistral key.';
+		} finally {
+			savingMistralKey = false;
+		}
+	}
+
+	async function removeMistralKey() {
+		try {
+			await api.deleteMistralApiKey();
+			hasMistralKey = false;
+			activeProvider = await api.getAiProvider();
+			keyMsg = 'Mistral API key removed.';
+			setTimeout(() => keyMsg = '', 3000);
+		} catch (e) {
+			keyMsg = 'Failed to remove Mistral key.';
+		}
+	}
+
+	async function saveOllamaKey() {
+		if (!ollamaKeyInput.trim()) return;
+		savingOllamaKey = true;
+		try {
+			await api.storeOllamaApiKey(ollamaKeyInput.trim());
+			hasOllamaKey = true;
+			ollamaKeyInput = '';
+			keyMsg = 'Ollama API key saved securely.';
+			activeProvider = await api.getAiProvider();
+			setTimeout(() => keyMsg = '', 3000);
+		} catch (e) {
+			keyMsg = 'Failed to save Ollama key.';
+		} finally {
+			savingOllamaKey = false;
+		}
+	}
+
+	async function removeOllamaKey() {
+		try {
+			await api.deleteOllamaApiKey();
+			hasOllamaKey = false;
+			activeProvider = await api.getAiProvider();
+			keyMsg = 'Ollama API key removed.';
+			setTimeout(() => keyMsg = '', 3000);
+		} catch (e) {
+			keyMsg = 'Failed to remove Ollama key.';
+		}
+	}
+
 	onMount(async () => {
 		try {
 			settings = await api.getSettings();
@@ -53,6 +135,7 @@
 		} finally {
 			loading = false;
 		}
+		loadApiKeyStatus();
 	});
 
 	async function saveSettings() {
@@ -281,8 +364,123 @@
 				</Card>
 			</div>
 
-			<!-- Updates -->
-			<div class="col-span-12 lg:col-span-6">
+		<!-- AI API Keys -->
+		<div class="col-span-12">
+			<Card variant="glass">
+				<CardHeader>
+					<div class="flex items-center justify-between">
+						<div>
+							<CardTitle>AI API Keys</CardTitle>
+							<CardDescription>
+								Configure Mistral AI or Ollama Cloud API keys. Keys are stored securely in your OS keychain.
+							</CardDescription>
+						</div>
+						{#if activeProvider !== 'unknown'}
+							<Badge variant={activeProvider === 'mistral' ? 'default' : 'outline'} class="text-xs">
+								<Zap class="w-3 h-3 mr-1" />
+								{activeProvider === 'mistral' ? 'Mistral API' : activeProvider === 'ollama-cloud' ? 'Ollama Cloud' : 'Ollama Local'}
+							</Badge>
+						{/if}
+					</div>
+				</CardHeader>
+				<CardContent class="space-y-6">
+					{#if keyMsg}
+						<div class="p-3 rounded-lg bg-primary/10 border border-primary/30 text-sm flex items-center gap-2">
+							<Check class="w-4 h-4 text-primary" />
+							{keyMsg}
+						</div>
+					{/if}
+
+					<!-- Mistral Direct API -->
+					<div class="p-4 rounded-lg bg-muted/30 border border-border space-y-3">
+						<div class="flex items-center justify-between">
+							<div class="flex items-center gap-3">
+								<div class="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-500/10">
+									<Key class="w-5 h-5 text-orange-400" />
+								</div>
+								<div>
+									<p class="font-medium">Mistral API Key</p>
+									<p class="text-xs text-muted-foreground">
+										Direct access via api.mistral.ai — <a href="https://console.mistral.ai/api-keys" class="underline text-primary" on:click|preventDefault={() => open('https://console.mistral.ai/api-keys')}>Get your key</a>
+									</p>
+								</div>
+							</div>
+							{#if hasMistralKey}
+								<div class="flex items-center gap-2">
+									<Badge variant="default" class="text-xs bg-green-600">
+										<Check class="w-3 h-3 mr-1" /> Active
+									</Badge>
+									<Button variant="ghost" size="sm" on:click={removeMistralKey}>
+										<X class="w-4 h-4" />
+									</Button>
+								</div>
+							{/if}
+						</div>
+						{#if !hasMistralKey}
+							<div class="flex gap-2">
+								<input
+									type="password"
+									bind:value={mistralKeyInput}
+									placeholder="Enter your Mistral API key..."
+									class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+								/>
+								<Button variant="cyber" size="sm" on:click={saveMistralKey} disabled={savingMistralKey || !mistralKeyInput.trim()}>
+									{savingMistralKey ? 'Saving...' : 'Save'}
+								</Button>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Ollama Cloud API -->
+					<div class="p-4 rounded-lg bg-muted/30 border border-border space-y-3">
+						<div class="flex items-center justify-between">
+							<div class="flex items-center gap-3">
+								<div class="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500/10">
+									<Key class="w-5 h-5 text-blue-400" />
+								</div>
+								<div>
+									<p class="font-medium">Ollama Cloud API Key</p>
+									<p class="text-xs text-muted-foreground">
+										Mistral models via Ollama Cloud — <a href="https://ollama.com/settings/keys" class="underline text-primary" on:click|preventDefault={() => open('https://ollama.com/settings/keys')}>Get your key</a>
+									</p>
+								</div>
+							</div>
+							{#if hasOllamaKey}
+								<div class="flex items-center gap-2">
+									<Badge variant={activeProvider === 'ollama-cloud' ? 'default' : 'outline'} class="text-xs {activeProvider === 'ollama-cloud' ? 'bg-green-600' : ''}">
+										<Check class="w-3 h-3 mr-1" /> {activeProvider === 'ollama-cloud' ? 'Active' : 'Stored'}
+									</Badge>
+									<Button variant="ghost" size="sm" on:click={removeOllamaKey}>
+										<X class="w-4 h-4" />
+									</Button>
+								</div>
+							{/if}
+						</div>
+						{#if !hasOllamaKey}
+							<div class="flex gap-2">
+								<input
+									type="password"
+									bind:value={ollamaKeyInput}
+									placeholder="Enter your Ollama Cloud API key..."
+									class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+								/>
+								<Button variant="cyber" size="sm" on:click={saveOllamaKey} disabled={savingOllamaKey || !ollamaKeyInput.trim()}>
+									{savingOllamaKey ? 'Saving...' : 'Save'}
+								</Button>
+							</div>
+						{/if}
+					</div>
+
+					<p class="text-xs text-muted-foreground">
+						Priority: Mistral API key is used first if set. Otherwise falls back to Ollama Cloud, then Ollama Local.
+						All keys are stored in your OS keychain — never in files.
+					</p>
+				</CardContent>
+			</Card>
+		</div>
+
+		<!-- Updates -->
+		<div class="col-span-12 lg:col-span-6">
 				<Card variant="glass">
 					<CardHeader>
 						<CardTitle>Updates</CardTitle>
@@ -349,9 +547,9 @@
 								<p class="text-sm text-muted-foreground">
 									All-in-one cybersecurity suite
 								</p>
-								<p class="text-xs text-muted-foreground mt-1">
-									Version 0.1.0 (Build 2024.01.06)
-								</p>
+							<p class="text-xs text-muted-foreground mt-1">
+								Version 1.0.0 (Mistral Hackathon 2026)
+							</p>
 							</div>
 						</div>
 

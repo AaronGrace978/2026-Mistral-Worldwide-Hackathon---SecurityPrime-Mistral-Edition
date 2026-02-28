@@ -200,10 +200,14 @@ fn main() {
             modules::agent::analyze_behavioral_patterns_ai,
             modules::agent::get_security_intelligence,
             modules::agent::perform_comprehensive_ai_analysis,
-            // API Key management commands
+            // API Key management commands (Ollama + Mistral direct)
             modules::agent::store_ollama_api_key,
             modules::agent::has_ollama_api_key,
             modules::agent::delete_ollama_api_key,
+            modules::agent::store_mistral_api_key,
+            modules::agent::has_mistral_api_key,
+            modules::agent::delete_mistral_api_key,
+            modules::agent::get_ai_provider,
             modules::agent::reset_agent_client,
             // Firewall export/import commands
             modules::firewall::export_firewall_rules,

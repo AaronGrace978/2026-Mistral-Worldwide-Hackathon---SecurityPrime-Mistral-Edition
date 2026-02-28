@@ -46,7 +46,7 @@ SecurityPrime uses the following open-source libraries, APIs, and services. All 
 
 ## Contributors
 
-- Aaron Grace — [@AaronGrace978](https://github.com/AaronGrace978)
+- Aaron Grace — [@AaronGrace978](https://github.com/AaronGrace978) | [BostonAI.io](https://bostonai.io)
 - Cyber Security Prime Team
 
 ---

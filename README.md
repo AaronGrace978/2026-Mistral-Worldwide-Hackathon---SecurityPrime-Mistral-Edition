@@ -146,4 +146,4 @@ MIT — see [LICENSE](LICENSE)
 
 ---
 
-*Built with Rust, Svelte, and Mistral AI.*
+*Built with Rust, Svelte, and Mistral AI.* | [BostonAI.io](https://bostonai.io)

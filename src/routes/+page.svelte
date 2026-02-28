@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { securityScore, activities, alerts, moduleStatuses } from '$lib/stores/security';
 	import SecurityScoreCard from '$lib/components/SecurityScoreCard.svelte';
 	import StatusCard from '$lib/components/StatusCard.svelte';
@@ -252,11 +253,11 @@
 								</div>
 								<span class="text-[10px] text-muted-foreground mt-1 block">4 models routed</span>
 							</div>
-							<Button variant="cyber" class="gap-2" href="/agent">
-								<Bot class="w-4 h-4" />
-								Open Copilot
-								<ArrowRight class="w-4 h-4" />
-							</Button>
+						<Button variant="cyber" class="gap-2" on:click={() => goto('/agent')}>
+							<Bot class="w-4 h-4" />
+							Open Copilot
+							<ArrowRight class="w-4 h-4" />
+						</Button>
 						</div>
 					</div>
 				</CardContent>
@@ -286,25 +287,25 @@
 		</CardHeader>
 		<CardContent>
 			<div class="flex flex-wrap gap-3">
-				<Button variant="cyber" class="gap-2" href="/scanner">
+				<Button variant="cyber" class="gap-2" on:click={() => goto('/scanner')}>
 					<Shield class="w-4 h-4" />
 					Run Quick Scan
 				</Button>
-				<Button variant="outline" class="gap-2" href="/vulnerability">
+				<Button variant="outline" class="gap-2" on:click={() => goto('/vulnerability')}>
 					Check Vulnerabilities
 				</Button>
-				<Button variant="outline" class="gap-2" href="/encryption">
+				<Button variant="outline" class="gap-2" on:click={() => goto('/encryption')}>
 					Encrypt Files
 				</Button>
-				<Button variant="outline" class="gap-2" href="/agent">
+				<Button variant="outline" class="gap-2" on:click={() => goto('/agent')}>
 					<Bot class="w-4 h-4" />
 					AI Security Audit
 				</Button>
-				<Button variant="outline" class="gap-2" href="/flagship">
+				<Button variant="outline" class="gap-2" on:click={() => goto('/flagship')}>
 					<Rocket class="w-4 h-4" />
 					Flagship Program
 				</Button>
-				<Button variant="outline" class="gap-2" href="/settings">
+				<Button variant="outline" class="gap-2" on:click={() => goto('/settings')}>
 					Configure Settings
 				</Button>
 			</div>

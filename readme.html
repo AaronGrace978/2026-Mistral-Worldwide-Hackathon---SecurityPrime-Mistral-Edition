@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>README — SecurityPrime | Mistral AI Hackathon 2026</title>
+  <meta name="description" content="SecurityPrime README documentation. AI-Native Endpoint Security powered by Mistral models." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" />
+  <style>
+    :root {
+      --mistral-red: #e10500;
+      --mistral-orange-dark: #fa500f;
+      --mistral-orange: #ff8205;
+      --mistral-orange-light: #ffaf00;
+      --mistral-yellow: #ffd800;
+      --bg: #0a0a0a;
+      --surface: rgba(30, 30, 30, 0.95);
+      --surface-solid: #1e1e1e;
+      --border: rgba(255, 130, 5, 0.2);
+      --border-bright: rgba(255, 130, 5, 0.5);
+      --text: #fff0eb;
+      --muted: #b8b0a0;
+      --accent: #ff8205;
+      --accent2: #ffaf00;
+      --success: #22c55e;
+      --danger: #e10500;
+      --mistral-gradient: linear-gradient(135deg, #e10500, #fa500f, #ff8205, #ffaf00, #ffd800);
+      --glow: 0 0 30px rgba(255, 130, 5, 0.25);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.12; pointer-events: none; z-index: 0; }
+    .orb-1 { width: 600px; height: 600px; background: var(--mistral-orange); top: -200px; left: -100px; }
+    .orb-2 { width: 500px; height: 500px; background: var(--mistral-red); bottom: -150px; right: -100px; }
+
+    /* Navigation */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(20px); background: rgba(10, 10, 10, 0.92);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 900px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.8rem 2rem;
+    }
+    .nav-logo {
+      font-size: 1.1rem; font-weight: 800;
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-decoration: none;
+    }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+
+    /* Container */
+    .page { position: relative; z-index: 1; }
+    .container { max-width: 900px; margin: 0 auto; padding: 3rem 2rem 6rem; }
+
+    /* Hero Banner */
+    .banner {
+      width: 100%; border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--border); margin-bottom: 2rem;
+    }
+    .banner img { width: 100%; display: block; }
+
+    /* Typography */
+    h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 900; letter-spacing: -1.5px;
+      margin-bottom: 1rem; line-height: 1.15;
+    }
+    h1 .grad {
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    h2 {
+      font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px;
+      margin: 3rem 0 1rem; padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    h3 { font-size: 1.25rem; font-weight: 700; color: var(--accent2); margin: 2rem 0 0.75rem; }
+    h4 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.5rem; }
+    p { color: var(--text); margin-bottom: 1rem; }
+    .lead { font-size: 1.15rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+    /* Lists */
+    ul, ol { margin: 0.75rem 0 1.25rem 1.5rem; color: var(--text); }
+    li { margin-bottom: 0.5rem; }
+    li strong { color: var(--accent2); }
+
+    /* Badge */
+    .badge-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 1rem 0 1.5rem; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 0.35rem 0.8rem; border-radius: 8px;
+    }
+    .badge-orange { background: rgba(255, 130, 5, 0.15); color: var(--accent); }
+    .badge-green { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.25rem 0;
+    }
+    .card h4 { margin-top: 0; }
+
+    /* Table */
+    table {
+      width: 100%; border-collapse: collapse; margin: 1.5rem 0;
+      background: var(--surface); border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    th, td { padding: 0.9rem 1rem; text-align: left; }
+    th {
+      background: rgba(255, 130, 5, 0.08);
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--accent);
+    }
+    td { border-top: 1px solid var(--border); font-size: 0.95rem; }
+
+    /* Code */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 130, 5, 0.1);
+      padding: 0.15rem 0.4rem; border-radius: 4px;
+      font-size: 0.9em; color: var(--accent2);
+    }
+    pre {
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      margin: 1rem 0 1.5rem;
+    }
+    pre code {
+      background: none; padding: 0;
+      font-size: 0.85rem; color: var(--text);
+    }
+
+    /* Architecture Tree */
+    .tree {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: var(--muted);
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* Easter Egg Box */
+    .easter-egg {
+      background: linear-gradient(135deg, rgba(255, 130, 5, 0.08), rgba(255, 216, 0, 0.04));
+      border: 1px solid var(--mistral-orange);
+      border-radius: 16px;
+      padding: 2rem;
+      margin: 2rem 0;
+    }
+    .easter-egg h3 { margin-top: 0; color: var(--mistral-yellow); }
+    .easter-egg summary {
+      cursor: pointer; color: var(--accent);
+      font-weight: 600; font-size: 1rem;
+    }
+    .easter-egg details[open] summary { margin-bottom: 1rem; }
+
+    /* Footer */
+    .footer {
+      margin-top: 4rem; padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .footer p { color: var(--muted); font-size: 0.9rem; }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .container { padding: 2rem 1.5rem 4rem; }
+      .nav-links { gap: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">SecurityPrime</a>
+      <div class="nav-links">
+        <a href="index.html">Landing</a>
+        <a href="pitch-deck.html">Pitch Deck</a>
+        <a href="docs/USER_GUIDE.html">User Guide</a>
+        <a href="https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="container">
+      <div class="banner">
+        <img src="banner.png" alt="SecurityPrime - Mistral Edition" />
+      </div>
+
+      <h1><span class="grad">SecurityPrime</span> — Mistral Edition</h1>
+      <p class="lead">AI-native desktop cybersecurity suite powered by Mistral models.</p>
+
+      <p>SecurityPrime is a full-featured endpoint security application built with a Rust backend (Tauri) and a SvelteKit frontend, featuring deep integration with Mistral AI for intelligent threat analysis, behavioral detection, and security automation.</p>
+
+      <div class="badge-row">
+        <span class="badge badge-orange">Mistral AI Hackathon 2026</span>
+        <span class="badge badge-green">Feb 28 – Mar 1</span>
+      </div>
+
+      <h3>Mistral AI Usage in This Project</h3>
+      <ul>
+        <li><strong>Mistral API</strong> (api.mistral.ai): Security Copilot chat, PRIME briefings, threat prediction, behavioral analysis, Investigation Dossier narration</li>
+        <li><strong>Pixtral</strong>: Screenshot/evidence analysis in Investigation Dossier (vision)</li>
+        <li><strong>Ollama</strong> (Mistral models): Fallback when using Ollama Cloud API key</li>
+        <li>All AI-generated security briefings and detective-style narration are powered by Mistral models.</li>
+      </ul>
+
+      <h2>Why Mistral?</h2>
+      <p>SecurityPrime uses Mistral models as the brain of its security engine — not as a bolt-on chatbot, but as a core reasoning layer that understands threats, analyzes file systems, predicts attack patterns, and generates remediation scripts.</p>
+
+      <h3>Multi-Model Routing Architecture</h3>
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Role</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Mistral Large 3</strong> (675B)</td><td>Deep Analyst</td><td>Full threat assessment, security audits, CVE analysis</td></tr>
+          <tr><td><strong>Ministral</strong> (8B)</td><td>Fast Triage</td><td>Quick risk classification, alert prioritization</td></tr>
+          <tr><td><strong>Devstral Small 2</strong> (24B)</td><td>Code & Remediation</td><td>Firewall rule generation, script-based fixes, agentic tasks</td></tr>
+          <tr><td><strong>Pixtral</strong> (12B)</td><td>Visual Inspector</td><td>Screenshot analysis, phishing page detection</td></tr>
+        </tbody>
+      </table>
+      <p>The routing engine automatically selects the right model for each task — fast models for simple questions, large models for deep analysis — optimizing for both speed and cost.</p>
+
+      <h2>Features</h2>
+
+      <h3>Core Security Modules</h3>
+      <ul>
+        <li><strong>Malware Scanner</strong> — Quick, full, and custom scans with memory forensics and behavioral analysis</li>
+        <li><strong>Firewall Management</strong> — Windows Firewall integration via <code>netsh</code>, rule import/export</li>
+        <li><strong>File Encryption</strong> — AES-256-GCM encryption with secure key management</li>
+        <li><strong>Vulnerability Scanner</strong> — CVE-aware scanning with remediation guidance</li>
+        <li><strong>Network Monitor</strong> — Real-time connection tracking and traffic analysis</li>
+        <li><strong>Tamper Detection</strong> — File integrity checking, anomaly detection, secure boot verification</li>
+        <li><strong>Process Isolation</strong> — Sandboxing and containerization for untrusted processes</li>
+        <li><strong>Security Hardening</strong> — Memory protection (DEP/ASLR/CFG), secure logging, rate limiting</li>
+      </ul>
+
+      <h3>AI-Powered Features</h3>
+      <ul>
+        <li><strong>Mistral Security Copilot</strong> — Streaming chat interface with markdown rendering and context-aware analysis</li>
+        <li><strong>Directory Scanning</strong> — AI analyzes file system structure for threats, health issues, and suspicious patterns</li>
+        <li><strong>Threat Prediction</strong> — Behavioral pattern analysis to predict emerging threats</li>
+        <li><strong>Security Intelligence</strong> — Aggregated threat indicators and recommended actions</li>
+        <li><strong>Comprehensive AI Analysis</strong> — Full system audit combining all data sources</li>
+      </ul>
+
+      <h3>Enterprise & Compliance</h3>
+      <ul>
+        <li><strong>MSP Management Server</strong> — Multi-endpoint management with PostgreSQL backend</li>
+        <li><strong>GDPR & HIPAA Compliance</strong> — Data inventory, consent tracking, breach reporting</li>
+        <li><strong>Licensing System</strong> — Per-endpoint licensing with secure activation</li>
+        <li><strong>Windows Service</strong> — Background monitoring with MSP heartbeat reporting</li>
+        <li><strong>Plugin System</strong> — Extensible architecture for third-party integrations</li>
+      </ul>
+
+      <h2>Tech Stack</h2>
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Technology</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Frontend</td><td>SvelteKit 2, TypeScript, Tailwind CSS (cyberpunk theme)</td></tr>
+          <tr><td>Backend</td><td>Rust, Tauri 1.6, Tokio async runtime</td></tr>
+          <tr><td>AI</td><td>Mistral models via direct API (api.mistral.ai) + Ollama (cloud/local)</td></tr>
+          <tr><td>Database</td><td>SQLite (local), PostgreSQL (MSP server)</td></tr>
+          <tr><td>Security</td><td>OS keychain (keyring), AES-256-GCM, bcrypt, JWT</td></tr>
+          <tr><td>Desktop</td><td>System tray, Windows Service, custom protocol handler</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Getting Started</h2>
+
+      <h3>Prerequisites</h3>
+      <ul>
+        <li><a href="https://nodejs.org/" target="_blank">Node.js</a> 18+</li>
+        <li><a href="https://rustup.rs/" target="_blank">Rust</a> (stable)</li>
+        <li><a href="https://tauri.app/v1/guides/getting-started/prerequisites" target="_blank">Tauri CLI</a> (<code>cargo install tauri-cli</code>)</li>
+        <li><a href="https://ollama.com/" target="_blank">Ollama</a> (for AI features)</li>
+      </ul>
+
+      <h3>Setup</h3>
+      <pre><code># Clone the repository
+git clone https://github.com/AaronGrace978/SecurityPrime.git
+cd SecurityPrime
+
+# Install frontend dependencies
+npm install
+
+# Copy environment config
+cp .env.example .env
+
+# Pull a Mistral model (for local inference)
+ollama pull mistral:7b
+
+# Start development
+npm run tauri:dev</code></pre>
+
+      <h3>Configuration</h3>
+      <ol>
+        <li><strong>Mistral API Key (recommended)</strong> — Set your Mistral API key via the in-app Settings panel or in <code>.env</code> as <code>MISTRAL_API_KEY</code>. This uses <code>api.mistral.ai</code> directly — no Ollama needed.</li>
+        <li><strong>Ollama Cloud API Key (alternative)</strong> — Set your Ollama Cloud API key via Settings or <code>.env</code> as <code>OLLAMA_CLOUD_API_KEY</code>. Uses Mistral models via Ollama's infrastructure.</li>
+        <li><strong>Local Ollama (offline)</strong> — Install <a href="https://ollama.com/" target="_blank">Ollama</a> and pull a Mistral model. No API key needed.</li>
+        <li><strong>Models</strong> — Configure model routing in <code>config/ollama_cloud_config.json</code></li>
+        <li><strong>MSP Server</strong> — Set <code>DATABASE_URL</code>, <code>JWT_SECRET</code>, and <code>PORT</code> in <code>.env</code> for managed deployments</li>
+      </ol>
+
+      <div class="card">
+        <h4>For Hackathon Judges</h4>
+        <p>Just paste your Mistral API key in <strong>Settings > AI API Keys</strong>. That's it — the app will use Mistral's API directly.</p>
+      </div>
+
+      <h2>Architecture</h2>
+      <div class="tree">SecurityPrime/
+├── src/                    # SvelteKit frontend
+│   ├── routes/             # Page components (dashboard, agent, scanner, etc.)
+│   ├── lib/
+│   │   ├── api.ts          # Type-safe Tauri API layer
+│   │   ├── components/     # UI components (shadcn/ui + custom)
+│   │   └── stores/         # Svelte stores (security, modules, theme)
+│   └── app.css             # Cyberpunk theme (Tailwind)
+├── src-tauri/              # Rust backend
+│   └── src/
+│       ├── main.rs         # Tauri app entry + command registration
+│       ├── cmd.rs          # Core Tauri commands
+│       ├── database/       # SQLite persistence + migrations
+│       └── modules/        # Security modules
+│           ├── agent.rs    # Mistral AI integration (streaming, multi-model)
+│           ├── scanner.rs  # Malware scanner
+│           ├── firewall.rs # Windows Firewall management
+│           ├── encryption.rs # AES-256-GCM file encryption
+│           ├── network.rs  # Network monitoring
+│           ├── compliance.rs # GDPR/HIPAA
+│           ├── flagship.rs # Advanced features (playbooks, attack surface)
+│           └── ...
+├── server/                 # MSP management server (Axum + PostgreSQL)
+├── config/                 # Ollama Cloud model configuration
+└── docs/                   # Documentation</div>
+
+      <div class="easter-egg">
+        <h3>Easter Egg: CatBoy Advance</h3>
+        <p><strong>Click the pixel cat anywhere in the app</strong> to launch <strong>KITTYBOUND</strong> — a full Mother/EarthBound-inspired GBA-style RPG hidden inside SecurityPrime.</p>
+        <details>
+          <summary>View Game Features</summary>
+          <ul>
+            <li><strong>Fake GBA boot screen</strong> — "CatBoy™ Advance" with chiptune jingle</li>
+            <li><strong>Psychedelic battle backgrounds</strong> — Per-scanline sine wave distortion with dual-layer HSL color cycling, just like EarthBound</li>
+            <li><strong>Turn-based RPG combat</strong> — FIGHT / PSI / ITEM / RUN menu, rolling HP odometer, SMAAAASH!! critical hits (2.5x damage)</li>
+            <li><strong>Overworld exploration</strong> — 30×20 tile map with trees, paths, water, flowers, and a safe zone building</li>
+            <li><strong>3 NPCs</strong> — Elder Cat (lore), Nurse Whiskers (heals HP/PP), Scout Paws (hints)</li>
+            <li><strong>5 enemies + final boss</strong> — Rogue Firewall, Spam Goblin, Buffer Overflow, Trojan Mouse, Kernel Panic, and the <strong>MEGA VIRUS</strong> (200 HP)</li>
+            <li><strong>PSI abilities</strong> — Purr Blast, Yarn Storm, Cat Nap (heal)</li>
+            <li><strong>Items</strong> — Tuna Can, Catnip, Milk</li>
+            <li><strong>Leveling system</strong> — EXP, stat growth, level-up fanfare</li>
+            <li><strong>Full chiptune audio</strong> — Web Audio API oscillators for every action</li>
+            <li><strong>Win condition</strong> — Defeat the MEGA VIRUS in the southern fields</li>
+          </ul>
+          <p><strong>Controls:</strong> Arrow keys / WASD to move, Z to confirm, X to cancel, ESC to exit</p>
+        </details>
+        <p style="margin-top: 1rem; color: var(--muted);">This is the killer feature. Trust through observability — and a hidden RPG when you need a break.</p>
+      </div>
+
+      <h2>Security</h2>
+      <ul>
+        <li>API keys are stored in the OS-native keychain (Windows Credential Manager / macOS Keychain / Linux Secret Service)</li>
+        <li>All file encryption uses AES-256-GCM with unique IVs</li>
+        <li>MSP server uses bcrypt password hashing and JWT authentication</li>
+        <li>SQL injection protection via parameterized queries throughout</li>
+        <li>No secrets are stored in configuration files or source code</li>
+      </ul>
+
+      <h2>Important Message To VibeCoders</h2>
+      <div class="card">
+        <ul>
+          <li>If you have Cursor installed or any Agentic software have it pull the repo and set it up for you, should be easy</li>
+          <li><code>https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition</code> ← Copy it like this into a prompt</li>
+          <li>Example: Yo, Agent set up this Repo for me https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition</li>
+        </ul>
+      </div>
+
+      <h2>Credits</h2>
+      <p>Open-source libraries and APIs are credited in <a href="ATTRIBUTION.md">ATTRIBUTION.md</a>.</p>
+
+      <h2>License</h2>
+      <p>MIT — see <a href="LICENSE">LICENSE</a></p>
+
+      <div class="footer">
+        <p><em>Built with Rust, Svelte, and Mistral AI.</em> | <a href="https://bostonai.io">BostonAI.io</a></p>
+        <p style="margin-top: 1rem;">With Love, Aaron Grace</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

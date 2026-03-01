@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecurityPrime — Pitch Deck | Mistral AI Hackathon 2026</title>
+  <meta name="description" content="SecurityPrime: AI-Native Endpoint Security pitch deck for Mistral AI Worldwide Hackathon 2026." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" />
+  <style>
+    :root {
+      --mistral-red: #e10500;
+      --mistral-orange-dark: #fa500f;
+      --mistral-orange: #ff8205;
+      --mistral-orange-light: #ffaf00;
+      --mistral-yellow: #ffd800;
+      --bg: #0a0a0a;
+      --surface: rgba(30, 30, 30, 0.95);
+      --surface-solid: #1e1e1e;
+      --border: rgba(255, 130, 5, 0.2);
+      --border-bright: rgba(255, 130, 5, 0.5);
+      --text: #fff0eb;
+      --muted: #b8b0a0;
+      --accent: #ff8205;
+      --accent2: #ffaf00;
+      --success: #22c55e;
+      --danger: #e10500;
+      --mistral-gradient: linear-gradient(135deg, #e10500, #fa500f, #ff8205, #ffaf00, #ffd800);
+      --glow: 0 0 30px rgba(255, 130, 5, 0.25), 0 0 60px rgba(250, 80, 15, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-snap-type: y mandatory; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Orbs */
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.12; pointer-events: none; z-index: 0; }
+    .orb-1 { width: 600px; height: 600px; background: var(--mistral-orange); top: -200px; left: -100px; animation: orbFloat1 20s ease-in-out infinite; }
+    .orb-2 { width: 500px; height: 500px; background: var(--mistral-red); bottom: -150px; right: -100px; animation: orbFloat2 25s ease-in-out infinite; }
+    @keyframes orbFloat1 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(80px, 60px); } }
+    @keyframes orbFloat2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-60px, -80px); } }
+
+    /* Navigation */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      backdrop-filter: blur(20px); background: rgba(10, 10, 10, 0.9);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.8rem 2rem;
+    }
+    .nav-logo {
+      font-size: 1.1rem; font-weight: 800;
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-decoration: none;
+    }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+
+    /* Slide */
+    .slide {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 6rem 2rem 4rem;
+      position: relative; z-index: 1;
+      scroll-snap-align: start;
+    }
+    .slide-content {
+      max-width: 1000px; width: 100%; text-align: center;
+    }
+
+    /* Typography */
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900; letter-spacing: -2px;
+      line-height: 1.1; margin-bottom: 1.5rem;
+    }
+    h1 .grad {
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    h2 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800; letter-spacing: -1px;
+      margin-bottom: 1rem;
+    }
+    h2 .grad {
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    h3 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--accent2); }
+    p { color: var(--muted); font-size: 1.15rem; max-width: 700px; margin: 0 auto 1.5rem; }
+    .subtitle { font-size: 1.3rem; color: var(--text); font-weight: 500; }
+
+    /* Badges */
+    .badge-row { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin: 1.5rem 0; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 0.4rem 0.9rem; border-radius: 8px;
+    }
+    .badge-orange { background: rgba(255, 130, 5, 0.15); color: var(--accent); }
+    .badge-green { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .badge-red { background: rgba(225, 5, 0, 0.15); color: var(--danger); }
+
+    /* Cards Grid */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; text-align: left; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.3s;
+    }
+    .card:hover { border-color: var(--border-bright); box-shadow: var(--glow); transform: translateY(-4px); }
+    .card-icon {
+      width: 50px; height: 50px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 1rem;
+      background: rgba(255, 130, 5, 0.1); color: var(--accent);
+    }
+    .card h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
+    .card p { font-size: 0.95rem; color: var(--muted); margin: 0; }
+
+    /* Table */
+    .model-table {
+      width: 100%; border-collapse: collapse; margin-top: 2rem;
+      background: var(--surface); border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .model-table th, .model-table td { padding: 1rem 1.25rem; text-align: left; }
+    .model-table th {
+      background: rgba(255, 130, 5, 0.08);
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--accent);
+    }
+    .model-table td { border-top: 1px solid var(--border); font-size: 0.95rem; }
+    .model-table tr:hover td { background: rgba(255, 130, 5, 0.04); }
+
+    /* Stats */
+    .stats { display: flex; gap: 3rem; justify-content: center; flex-wrap: wrap; margin: 2rem 0; }
+    .stat { text-align: center; }
+    .stat-value {
+      font-size: 3rem; font-weight: 900; letter-spacing: -2px;
+      background: var(--mistral-gradient);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .stat-label { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* CTA */
+    .cta-btn {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      padding: 1rem 2rem; border-radius: 12px;
+      font-size: 1rem; font-weight: 700;
+      text-decoration: none; transition: all 0.3s;
+      background: var(--mistral-gradient); color: #000;
+    }
+    .cta-btn:hover { transform: scale(1.05); box-shadow: var(--glow); }
+    .cta-secondary {
+      background: transparent; border: 2px solid var(--accent); color: var(--accent);
+    }
+    .cta-secondary:hover { background: rgba(255, 130, 5, 0.1); }
+
+    /* Tech Stack */
+    .tech-stack {
+      display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; margin: 2rem 0;
+    }
+    .tech-item {
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      padding: 1rem 1.5rem;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    }
+    .tech-item i { font-size: 2rem; color: var(--accent); }
+    .tech-item span { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+
+    /* Slide Indicator */
+    .slide-nav {
+      position: fixed; right: 2rem; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: 0.75rem; z-index: 50;
+    }
+    .slide-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--border); transition: all 0.3s;
+    }
+    .slide-dot.active { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+    /* Footer */
+    .footer {
+      padding: 3rem 2rem; text-align: center;
+      border-top: 1px solid var(--border);
+    }
+    .footer p { color: var(--muted); font-size: 0.9rem; }
+
+    @media (max-width: 768px) {
+      .slide { padding: 5rem 1.5rem 3rem; }
+      .cards { grid-template-columns: 1fr; }
+      .stats { gap: 2rem; }
+      .slide-nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">SecurityPrime</a>
+      <div class="nav-links">
+        <a href="index.html">Landing</a>
+        <a href="readme.html">README</a>
+        <a href="docs/USER_GUIDE.html">User Guide</a>
+        <a href="https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="slide-nav">
+    <a href="#slide-1" class="slide-dot active"></a>
+    <a href="#slide-2" class="slide-dot"></a>
+    <a href="#slide-3" class="slide-dot"></a>
+    <a href="#slide-4" class="slide-dot"></a>
+    <a href="#slide-5" class="slide-dot"></a>
+    <a href="#slide-6" class="slide-dot"></a>
+    <a href="#slide-7" class="slide-dot"></a>
+  </div>
+
+  <!-- SLIDE 1: Title -->
+  <section class="slide" id="slide-1">
+    <div class="slide-content">
+      <div class="badge-row">
+        <span class="badge badge-orange">Mistral AI Hackathon 2026</span>
+        <span class="badge badge-green">Feb 28 – Mar 1</span>
+      </div>
+      <h1><span class="grad">SecurityPrime</span></h1>
+      <p class="subtitle">AI-Native Endpoint Security</p>
+      <p>Trust through observability. Powered by Mistral models.</p>
+      <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="#slide-2" class="cta-btn"><i class="fas fa-play"></i> View Pitch</a>
+        <a href="https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition" class="cta-btn cta-secondary" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 2: The Problem -->
+  <section class="slide" id="slide-2">
+    <div class="slide-content">
+      <h2>The <span class="grad">Problem</span></h2>
+      <p>Endpoint security is broken. Users are left in the dark while their systems are under attack.</p>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-eye-slash"></i></div>
+          <h4>Zero Visibility</h4>
+          <p>Most security tools are black boxes. Users have no idea what's being scanned, blocked, or why.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-brain"></i></div>
+          <h4>No Intelligence</h4>
+          <p>Static signature-based detection misses novel threats. No behavioral analysis, no prediction.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-dollar-sign"></i></div>
+          <h4>Enterprise-Only</h4>
+          <p>Advanced security features are locked behind $50K/year enterprise contracts. SMBs are unprotected.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: The Solution -->
+  <section class="slide" id="slide-3">
+    <div class="slide-content">
+      <h2>The <span class="grad">Solution</span></h2>
+      <p>SecurityPrime combines observability-first design with Mistral AI's reasoning capabilities.</p>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value">8</div>
+          <div class="stat-label">Security Modules</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">4</div>
+          <div class="stat-label">Mistral Models</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">100%</div>
+          <div class="stat-label">Observability</div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-robot"></i></div>
+          <h4>AI Security Copilot</h4>
+          <p>Chat with Mistral about your system. Get threat analysis, remediation scripts, and security advice in plain English.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-shield-alt"></i></div>
+          <h4>Full-Stack Protection</h4>
+          <p>Malware scanner, firewall manager, file encryption, network monitor, vulnerability scanner — all in one app.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-eye"></i></div>
+          <h4>Total Transparency</h4>
+          <p>Every scan, every block, every action is logged and explained. Trust through observability.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4: Mistral Integration -->
+  <section class="slide" id="slide-4">
+    <div class="slide-content">
+      <h2>Powered by <span class="grad">Mistral AI</span></h2>
+      <p>Not a chatbot bolt-on. Mistral is the reasoning engine at the core of SecurityPrime.</p>
+      <table class="model-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Role</th>
+            <th>Use Case</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Mistral Large 3</strong></td>
+            <td>Deep Analyst</td>
+            <td>Full threat assessment, security audits, CVE analysis</td>
+          </tr>
+          <tr>
+            <td><strong>Ministral 8B</strong></td>
+            <td>Fast Triage</td>
+            <td>Quick risk classification, alert prioritization</td>
+          </tr>
+          <tr>
+            <td><strong>Devstral Small 2</strong></td>
+            <td>Code & Remediation</td>
+            <td>Firewall rule generation, script-based fixes</td>
+          </tr>
+          <tr>
+            <td><strong>Pixtral 12B</strong></td>
+            <td>Visual Inspector</td>
+            <td>Screenshot analysis, phishing page detection</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top: 2rem;">Automatic model routing: fast models for simple queries, large models for deep analysis.</p>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: Features -->
+  <section class="slide" id="slide-5">
+    <div class="slide-content">
+      <h2>Feature <span class="grad">Highlights</span></h2>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-bug"></i></div>
+          <h4>Malware Scanner</h4>
+          <p>Quick, full, and custom scans with memory forensics and behavioral analysis.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-fire"></i></div>
+          <h4>Firewall Manager</h4>
+          <p>Windows Firewall integration via netsh. View, create, and manage rules.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-lock"></i></div>
+          <h4>File Encryption</h4>
+          <p>AES-256-GCM encryption with secure key management in OS keychain.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-network-wired"></i></div>
+          <h4>Network Monitor</h4>
+          <p>Real-time connection tracking, bandwidth analysis, suspicious traffic alerts.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-building"></i></div>
+          <h4>MSP Dashboard</h4>
+          <p>Multi-tenant management server with PostgreSQL, REST API, and licensing.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon" style="background: rgba(255, 216, 0, 0.15); color: var(--mistral-yellow);"><i class="fas fa-gamepad"></i></div>
+          <h4>Easter Egg: CatBoy Advance</h4>
+          <p>Click the pixel cat to play a full Mother/EarthBound-style GBA RPG. The killer feature.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: Tech Stack -->
+  <section class="slide" id="slide-6">
+    <div class="slide-content">
+      <h2>Tech <span class="grad">Stack</span></h2>
+      <div class="tech-stack">
+        <div class="tech-item">
+          <i class="fab fa-rust"></i>
+          <span>Rust + Tauri</span>
+        </div>
+        <div class="tech-item">
+          <i class="fab fa-js"></i>
+          <span>SvelteKit</span>
+        </div>
+        <div class="tech-item">
+          <i class="fas fa-brain"></i>
+          <span>Mistral API</span>
+        </div>
+        <div class="tech-item">
+          <i class="fas fa-database"></i>
+          <span>SQLite / PostgreSQL</span>
+        </div>
+        <div class="tech-item">
+          <i class="fas fa-key"></i>
+          <span>AES-256-GCM</span>
+        </div>
+      </div>
+      <p>Desktop-native performance with Rust. Beautiful UI with SvelteKit. AI intelligence with Mistral.</p>
+      <div class="cards" style="margin-top: 2rem;">
+        <div class="card">
+          <h4>Frontend</h4>
+          <p>SvelteKit 2, TypeScript, Tailwind CSS with cyberpunk theme</p>
+        </div>
+        <div class="card">
+          <h4>Backend</h4>
+          <p>Rust, Tauri 1.6, Tokio async runtime</p>
+        </div>
+        <div class="card">
+          <h4>Security</h4>
+          <p>OS keychain, bcrypt, JWT, parameterized queries</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7: Call to Action -->
+  <section class="slide" id="slide-7">
+    <div class="slide-content">
+      <h2>Try <span class="grad">SecurityPrime</span></h2>
+      <p>Download the release, paste your Mistral API key, and experience AI-native security.</p>
+      <div class="badge-row">
+        <span class="badge badge-orange">MIT License</span>
+        <span class="badge badge-green">Open Source</span>
+        <span class="badge badge-red">Windows Ready</span>
+      </div>
+      <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition/releases" class="cta-btn" target="_blank"><i class="fas fa-download"></i> Download v1.0.0</a>
+        <a href="https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition" class="cta-btn cta-secondary" target="_blank"><i class="fab fa-github"></i> View Source</a>
+      </div>
+      <p style="margin-top: 3rem; font-size: 1.5rem; color: var(--text);">Built with <span style="color: var(--danger);">&#10084;</span> by Aaron Grace</p>
+      <p style="color: var(--muted);">BostonAI.io</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>SecurityPrime — Mistral AI Worldwide Hackathon 2026</p>
+  </footer>
+
+  <script>
+    const dots = document.querySelectorAll('.slide-dot');
+    const slides = document.querySelectorAll('.slide');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          dots.forEach(dot => dot.classList.remove('active'));
+          document.querySelector(`.slide-dot[href="#${id}"]`)?.classList.add('active');
+        }
+      });
+    }, { threshold: 0.5 });
+    slides.forEach(slide => observer.observe(slide));
+  </script>
+</body>
+</html>

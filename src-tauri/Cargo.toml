@@ -43,6 +43,9 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 base64 = "0.21"
 # HMAC for license validation
 hmac = "0.12"
+windows = { version = "0.62.2", features = ["Win32_System_Diagnostics_ToolHelp", "Win32_System_Memory", "Win32_System_Threading", "Win32_Foundation", "Win32_Security", "Win32_System_Diagnostics_Debug"] }
+yara-x = "1.13.0"
+dns-lookup = "3.0.1"
 # Windows Service support
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.6"

@@ -860,56 +860,170 @@ pub async fn scan_memory_forensics() -> Result<Vec<MemoryScanResult>, String> {
     Ok(results)
 }
 
-/// Build memory region info from real process memory usage via sysinfo
+/// Enumerate real memory regions of a process using Windows VirtualQueryEx API
 fn analyze_memory_regions(process_id: u32) -> Vec<MemoryRegion> {
-    let mut cached = SCANNER_SYSTEM.write();
-    let sys = cached.get_with_processes();
-    let pid = sysinfo::Pid::from(process_id as usize);
+    #[cfg(windows)]
+    {
+        use windows::Win32::System::Memory::{
+            VirtualQueryEx, MEMORY_BASIC_INFORMATION,
+            MEM_COMMIT, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE,
+            PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
+            PAGE_READONLY, PAGE_READWRITE, PAGE_WRITECOPY, PAGE_NOACCESS, PAGE_GUARD,
+        };
+        use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
+        use windows::Win32::Foundation::CloseHandle;
 
-    let process = match sys.process(pid) {
-        Some(p) => p,
-        None => return Vec::new(),
+        let mut regions = Vec::new();
+
+        let handle = unsafe {
+            match OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, process_id) {
+                Ok(h) => h,
+                Err(_) => return Vec::new(),
+            }
+        };
+
+        let mut address: usize = 0;
+        let mut mbi: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
+        let mbi_size = std::mem::size_of::<MEMORY_BASIC_INFORMATION>();
+
+        loop {
+            let result = unsafe {
+                VirtualQueryEx(
+                    handle,
+                    Some(address as *const std::ffi::c_void),
+                    &mut mbi,
+                    mbi_size,
+                )
+            };
+
+            if result == 0 {
+                break;
+            }
+
+            if mbi.State == MEM_COMMIT {
+                let protection = {
+                    let p = mbi.Protect;
+                    let mut parts = Vec::new();
+                    if p.contains(PAGE_EXECUTE_READWRITE) {
+                        parts.push("READ|WRITE|EXECUTE");
+                    } else if p.contains(PAGE_EXECUTE_READ) {
+                        parts.push("READ|EXECUTE");
+                    } else if p.contains(PAGE_EXECUTE_WRITECOPY) {
+                        parts.push("WRITECOPY|EXECUTE");
+                    } else if p.contains(PAGE_EXECUTE) {
+                        parts.push("EXECUTE");
+                    } else if p.contains(PAGE_READWRITE) {
+                        parts.push("READ|WRITE");
+                    } else if p.contains(PAGE_WRITECOPY) {
+                        parts.push("WRITECOPY");
+                    } else if p.contains(PAGE_READONLY) {
+                        parts.push("READ");
+                    } else if p.contains(PAGE_NOACCESS) {
+                        parts.push("NOACCESS");
+                    }
+                    if p.contains(PAGE_GUARD) {
+                        parts.push("GUARD");
+                    }
+                    if parts.is_empty() {
+                        format!("0x{:X}", p.0)
+                    } else {
+                        parts.join("|")
+                    }
+                };
+
+                let allocation_type = {
+                    let t = mbi.Type;
+                    if t == MEM_IMAGE { "MEM_IMAGE".to_string() }
+                    else if t == MEM_MAPPED { "MEM_MAPPED".to_string() }
+                    else if t == MEM_PRIVATE { "MEM_PRIVATE".to_string() }
+                    else { format!("0x{:X}", t.0) }
+                };
+
+                let is_rwx = mbi.Protect.contains(PAGE_EXECUTE_READWRITE);
+                let is_exec_private = mbi.Protect.contains(PAGE_EXECUTE_READ) && mbi.Type == MEM_PRIVATE;
+                let suspicious = is_rwx || is_exec_private;
+
+                let entropy = if mbi.RegionSize > 0 && mbi.RegionSize < 4_194_304 {
+                    compute_region_entropy(handle, mbi.BaseAddress as usize, mbi.RegionSize)
+                } else if is_rwx {
+                    7.5
+                } else {
+                    0.0
+                };
+
+                regions.push(MemoryRegion {
+                    base_address: mbi.BaseAddress as u64,
+                    size: mbi.RegionSize,
+                    protection,
+                    allocation_type,
+                    suspicious,
+                    entropy,
+                });
+            }
+
+            address = mbi.BaseAddress as usize + mbi.RegionSize;
+            if address == 0 { break; }
+        }
+
+        unsafe { let _ = CloseHandle(handle); }
+
+        // Collapse small regions to keep result manageable — keep suspicious + largest
+        if regions.len() > 100 {
+            regions.sort_by(|a, b| b.size.cmp(&a.size));
+            let suspicious: Vec<_> = regions.iter().filter(|r| r.suspicious).cloned().collect();
+            regions.truncate(80);
+            for s in suspicious {
+                if !regions.iter().any(|r| r.base_address == s.base_address) {
+                    regions.push(s);
+                }
+            }
+        }
+
+        regions
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = process_id;
+        Vec::new()
+    }
+}
+
+/// Compute Shannon entropy of a memory region by reading its bytes
+#[cfg(windows)]
+fn compute_region_entropy(handle: windows::Win32::Foundation::HANDLE, base: usize, size: usize) -> f64 {
+    let sample_size = size.min(65536);
+    let mut buffer = vec![0u8; sample_size];
+    let mut bytes_read: usize = 0;
+
+    let ok = unsafe {
+        windows::Win32::System::Diagnostics::Debug::ReadProcessMemory(
+            handle,
+            base as *const std::ffi::c_void,
+            buffer.as_mut_ptr() as *mut std::ffi::c_void,
+            sample_size,
+            Some(&mut bytes_read),
+        )
     };
 
-    let phys_mem = process.memory();
-    let virt_mem = process.virtual_memory();
-    let mut regions = Vec::new();
-
-    if phys_mem > 0 {
-        // Code / image region
-        regions.push(MemoryRegion {
-            base_address: 0x00400000,
-            size: (phys_mem / 2) as usize,
-            protection: "READ|EXECUTE".to_string(),
-            allocation_type: "MEM_IMAGE".to_string(),
-            suspicious: false,
-            entropy: 5.2,
-        });
-
-        // Heap / data region
-        regions.push(MemoryRegion {
-            base_address: 0x00600000,
-            size: (phys_mem / 2) as usize,
-            protection: "READ|WRITE".to_string(),
-            allocation_type: "MEM_COMMIT".to_string(),
-            suspicious: false,
-            entropy: 3.8,
-        });
+    if ok.is_err() || bytes_read == 0 {
+        return 0.0;
     }
 
-    // Disproportionately large virtual memory may indicate injected code
-    if virt_mem > phys_mem * 10 && virt_mem > 100_000_000 {
-        regions.push(MemoryRegion {
-            base_address: 0x7FF000000000,
-            size: (virt_mem - phys_mem) as usize,
-            protection: "READ|WRITE|EXECUTE".to_string(),
-            allocation_type: "MEM_RESERVE".to_string(),
-            suspicious: true,
-            entropy: 7.9,
-        });
+    let data = &buffer[..bytes_read];
+    let mut freq = [0u64; 256];
+    for &b in data {
+        freq[b as usize] += 1;
     }
-
-    regions
+    let len = data.len() as f64;
+    let mut entropy = 0.0f64;
+    for &f in &freq {
+        if f > 0 {
+            let p = f as f64 / len;
+            entropy -= p * p.log2();
+        }
+    }
+    (entropy * 100.0).round() / 100.0
 }
 
 /// Scan real running processes for known malicious tool names & suspicious paths
@@ -1167,60 +1281,169 @@ fn generate_recommendations(anomalies: &[BehavioralAnomaly]) -> Vec<String> {
 }
 
 // ============================================================================
-// YARA Rule Integration
+// YARA Rule Integration (powered by yara-x engine)
 // ============================================================================
 
 static YARA_RULES: Lazy<Arc<RwLock<Vec<YaraRule>>>> = Lazy::new(|| {
     Arc::new(RwLock::new(Vec::new()))
 });
 
-/// Initialize default YARA rules
+/// Default YARA rule source for built-in detection
+const DEFAULT_YARA_SOURCE: &str = r#"
+rule PE_Executable {
+    meta:
+        author = "SecurityPrime"
+        description = "Detects PE (Windows executable) files"
+        severity = "info"
+    strings:
+        $mz = "MZ"
+    condition:
+        $mz at 0
+}
+
+rule Suspicious_Shellcode {
+    meta:
+        author = "SecurityPrime"
+        description = "Detects common shellcode patterns"
+        severity = "critical"
+    strings:
+        $api_call1 = { 64 A1 30 00 00 00 }
+        $api_call2 = { 64 8B 0D 30 00 00 00 }
+        $ws2_32 = "ws2_32" nocase
+        $wininet = "WinINet" nocase
+        $urlmon = "URLDownloadToFile" nocase
+    condition:
+        ($api_call1 or $api_call2) or (2 of ($ws2_32, $wininet, $urlmon))
+}
+
+rule Suspicious_PowerShell_Invocation {
+    meta:
+        author = "SecurityPrime"
+        description = "Detects obfuscated or suspicious PowerShell execution"
+        severity = "high"
+    strings:
+        $ps1 = "powershell" nocase
+        $ps2 = "-EncodedCommand" nocase
+        $ps3 = "-ExecutionPolicy Bypass" nocase
+        $ps4 = "Invoke-Expression" nocase
+        $ps5 = "IEX" nocase
+        $ps6 = "FromBase64String" nocase
+        $ps7 = "New-Object System.Net.WebClient" nocase
+        $ps8 = "DownloadString" nocase
+        $ps9 = "-WindowStyle Hidden" nocase
+    condition:
+        $ps1 and (2 of ($ps2, $ps3, $ps4, $ps5, $ps6, $ps7, $ps8, $ps9))
+}
+
+rule Credential_Harvesting_Tool {
+    meta:
+        author = "SecurityPrime"
+        description = "Detects known credential harvesting tools"
+        severity = "critical"
+    strings:
+        $mimikatz1 = "mimikatz" nocase
+        $mimikatz2 = "sekurlsa::logonpasswords" nocase
+        $lazagne = "lazagne" nocase
+        $procdump = "procdump" nocase
+        $lsass = "lsass.exe" nocase
+        $sam_dump = "SAM" wide
+    condition:
+        any of ($mimikatz*, $lazagne) or ($procdump and $lsass) or ($sam_dump and $lsass)
+}
+
+rule Reverse_Shell_Indicators {
+    meta:
+        author = "SecurityPrime"
+        description = "Detects reverse shell payloads and indicators"
+        severity = "critical"
+    strings:
+        $nc1 = "nc.exe" nocase
+        $nc2 = "ncat" nocase
+        $bind = "/bin/sh" nocase
+        $sock = "socket" nocase
+        $connect = "connect" nocase
+        $meterpreter = "meterpreter" nocase
+        $cobalt = "cobaltstrike" nocase
+        $beacon = "beacon.dll" nocase
+    condition:
+        $meterpreter or $cobalt or $beacon or ($nc1 and $sock) or ($nc2 and $connect)
+}
+
+rule Ransomware_Indicators {
+    meta:
+        author = "SecurityPrime"
+        description = "Detects ransomware behavioral strings"
+        severity = "critical"
+    strings:
+        $ransom1 = "Your files have been encrypted" nocase
+        $ransom2 = "bitcoin" nocase
+        $ransom3 = "decrypt" nocase
+        $ransom4 = ".onion" nocase
+        $ransom5 = "HOW_TO_RECOVER" nocase
+        $ransom6 = "DECRYPT_INSTRUCTIONS" nocase
+        $crypto1 = "CryptEncrypt" nocase
+        $crypto2 = "CryptGenKey" nocase
+    condition:
+        2 of ($ransom*) or (1 of ($ransom*) and 1 of ($crypto*))
+}
+
+rule Packed_Or_Encrypted_Binary {
+    meta:
+        author = "SecurityPrime"
+        description = "Detects UPX-packed or heavily obfuscated binaries"
+        severity = "medium"
+    strings:
+        $upx0 = "UPX0"
+        $upx1 = "UPX1"
+        $upx2 = "UPX!"
+        $aspack = ".aspack"
+        $themida = "Themida"
+    condition:
+        ($upx0 and $upx1) or $upx2 or $aspack or $themida
+}
+
+rule Suspicious_Script_Content {
+    meta:
+        author = "SecurityPrime"
+        description = "Detects suspicious script content in non-script files"
+        severity = "high"
+    strings:
+        $vbs1 = "CreateObject" nocase
+        $vbs2 = "WScript.Shell" nocase
+        $vbs3 = "Scripting.FileSystemObject" nocase
+        $js1 = "eval(" nocase
+        $js2 = "ActiveXObject" nocase
+        $bat1 = "reg add" nocase
+        $bat2 = "schtasks /create" nocase
+    condition:
+        2 of them
+}
+"#;
+
+/// Compile YARA source into a compiled ruleset using yara-x
+fn compile_yara_rules_source(source: &str) -> Result<yara_x::Rules, String> {
+    let mut compiler = yara_x::Compiler::new();
+    compiler.add_source(source)
+        .map_err(|e| format!("YARA compilation error: {}", e))?;
+    Ok(compiler.build())
+}
+
+/// Initialize default YARA rules (also compiles to validate)
 pub fn initialize_yara_rules() -> Result<(), String> {
     let mut rules = YARA_RULES.write();
 
-    rules.push(YaraRule {
-        id: "MALWARE_PE_HEADER".to_string(),
-        name: "PE File Header Signature".to_string(),
-        namespace: "malware".to_string(),
-        condition: "pe.is_pe and pe.entry_point > 0".to_string(),
-        strings: vec![YaraString {
-            identifier: "$mz".to_string(),
-            pattern: "MZ".to_string(),
-            modifiers: vec![],
-        }],
-        metadata: HashMap::from([
-            ("author".to_string(), "Security Prime".to_string()),
-            (
-                "description".to_string(),
-                "Detects PE file headers".to_string(),
-            ),
-        ]),
-        enabled: true,
-    });
+    compile_yara_rules_source(DEFAULT_YARA_SOURCE)?;
 
     rules.push(YaraRule {
-        id: "SUSPICIOUS_STRINGS".to_string(),
-        name: "Suspicious String Patterns".to_string(),
-        namespace: "suspicious".to_string(),
-        condition: "any of them".to_string(),
-        strings: vec![
-            YaraString {
-                identifier: "$cmd".to_string(),
-                pattern: "cmd.exe".to_string(),
-                modifiers: vec!["nocase".to_string()],
-            },
-            YaraString {
-                identifier: "$powershell".to_string(),
-                pattern: "powershell.exe".to_string(),
-                modifiers: vec!["nocase".to_string()],
-            },
-        ],
+        id: "BUILTIN_RULES".to_string(),
+        name: "SecurityPrime Built-in Rules (8 rules, yara-x engine)".to_string(),
+        namespace: "malware".to_string(),
+        condition: "see individual rules".to_string(),
+        strings: vec![],
         metadata: HashMap::from([
-            ("author".to_string(), "Security Prime".to_string()),
-            (
-                "description".to_string(),
-                "Detects suspicious command execution".to_string(),
-            ),
+            ("author".to_string(), "SecurityPrime".to_string()),
+            ("engine".to_string(), "yara-x".to_string()),
+            ("description".to_string(), "PE detection, shellcode, PowerShell, credentials, reverse shells, ransomware, packers, suspicious scripts".to_string()),
         ]),
         enabled: true,
     });
@@ -1234,83 +1457,135 @@ pub fn get_yara_rules() -> Result<Vec<YaraRule>, String> {
     Ok(rules.clone())
 }
 
-/// Add a custom YARA rule
+/// Add a custom YARA rule (validates by compiling)
 pub fn add_yara_rule(rule: YaraRule) -> Result<(), String> {
+    if !rule.condition.is_empty() && !rule.strings.is_empty() {
+        let mut source = format!("rule {} {{\n  strings:\n", rule.id);
+        for s in &rule.strings {
+            if s.modifiers.iter().any(|m| m == "nocase") {
+                source.push_str(&format!("    {} = \"{}\" nocase\n", s.identifier, s.pattern));
+            } else {
+                source.push_str(&format!("    {} = \"{}\"\n", s.identifier, s.pattern));
+            }
+        }
+        source.push_str(&format!("  condition:\n    {}\n}}\n", rule.condition));
+        compile_yara_rules_source(&source)?;
+    }
     let mut rules = YARA_RULES.write();
     rules.push(rule);
     Ok(())
 }
 
-/// Scan files by reading real content and matching against YARA rule strings
+/// Scan files using the real yara-x engine
 pub async fn scan_with_yara(file_paths: Vec<String>) -> Result<Vec<YaraScanResult>, String> {
-    let rules = YARA_RULES.read();
-    let mut results = Vec::new();
+    let compiled = compile_yara_rules_source(DEFAULT_YARA_SOURCE)?;
 
-    for rule in rules.iter().filter(|r| r.enabled) {
-        let mut matches = Vec::new();
-
-        for file_path in &file_paths {
-            let path = Path::new(file_path);
-            if !path.exists() || !path.is_file() {
-                continue;
-            }
-
-            let content = match std::fs::read(path) {
-                Ok(data) => {
-                    if data.len() > 1_048_576 {
-                        data[..1_048_576].to_vec()
+    let custom_rules_source: Option<String> = {
+        let rules = YARA_RULES.read();
+        let custom: Vec<&YaraRule> = rules.iter()
+            .filter(|r| r.enabled && r.id != "BUILTIN_RULES" && !r.strings.is_empty())
+            .collect();
+        if custom.is_empty() {
+            None
+        } else {
+            let mut src = String::new();
+            for rule in custom {
+                src.push_str(&format!("rule {} {{\n  strings:\n", rule.id));
+                for s in &rule.strings {
+                    if s.modifiers.iter().any(|m| m == "nocase") {
+                        src.push_str(&format!("    {} = \"{}\" nocase\n", s.identifier, s.pattern));
                     } else {
-                        data
+                        src.push_str(&format!("    {} = \"{}\"\n", s.identifier, s.pattern));
                     }
                 }
-                Err(_) => continue,
-            };
+                src.push_str(&format!("  condition:\n    {}\n}}\n", rule.condition));
+            }
+            Some(src)
+        }
+    };
 
-            for yara_string in &rule.strings {
-                let pattern_bytes = yara_string.pattern.as_bytes();
-                let nocase = yara_string.modifiers.iter().any(|m| m == "nocase");
+    let custom_compiled = if let Some(ref src) = custom_rules_source {
+        Some(compile_yara_rules_source(src)?)
+    } else {
+        None
+    };
 
-                let found = if nocase {
-                    let hay: Vec<u8> = content.iter().map(|b| b.to_ascii_lowercase()).collect();
-                    let ndl: Vec<u8> = pattern_bytes.iter().map(|b| b.to_ascii_lowercase()).collect();
-                    find_subsequence(&hay, &ndl)
+    let mut results: Vec<YaraScanResult> = Vec::new();
+
+    for file_path in &file_paths {
+        let path = Path::new(file_path);
+        if !path.exists() || !path.is_file() {
+            continue;
+        }
+
+        let content = match std::fs::read(path) {
+            Ok(data) => {
+                if data.len() > 10_485_760 {
+                    data[..10_485_760].to_vec()
                 } else {
-                    find_subsequence(&content, pattern_bytes)
+                    data
+                }
+            }
+            Err(_) => continue,
+        };
+
+        let rulesets: Vec<&yara_x::Rules> = if let Some(ref cr) = custom_compiled {
+            vec![&compiled, cr]
+        } else {
+            vec![&compiled]
+        };
+
+        for ruleset in &rulesets {
+            let mut scanner = yara_x::Scanner::new(ruleset);
+            let scan_results = scanner.scan(&content)
+                .map_err(|e| format!("YARA scan error on {}: {}", file_path, e))?;
+
+            for matched_rule in scan_results.matching_rules() {
+                let rule_name = matched_rule.identifier().to_string();
+                let severity_str = matched_rule.metadata()
+                    .into_iter()
+                    .find(|(id, _)| *id == "severity")
+                    .and_then(|(_, val)| match val {
+                        yara_x::MetaValue::String(s) => Some(s.to_string()),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| "medium".to_string());
+
+                let severity = match severity_str.as_str() {
+                    "critical" => Severity::Critical,
+                    "high" => Severity::High,
+                    "info" | "low" => Severity::Low,
+                    _ => Severity::Medium,
                 };
 
-                if let Some(offset) = found {
-                    matches.push(YaraMatch {
-                        file_path: file_path.clone(),
-                        offset: offset as u64,
-                        string_identifier: yara_string.identifier.clone(),
-                        string_data: yara_string.pattern.clone(),
+                let mut matches = Vec::new();
+                for pattern in matched_rule.patterns() {
+                    for m in pattern.matches() {
+                        matches.push(YaraMatch {
+                            file_path: file_path.clone(),
+                            offset: m.range().start as u64,
+                            string_identifier: pattern.identifier().to_string(),
+                            string_data: format!("{} bytes at offset 0x{:X}", m.range().len(), m.range().start),
+                        });
+                    }
+                }
+
+                let existing = results.iter_mut().find(|r| r.rule_id == rule_name);
+                if let Some(existing) = existing {
+                    existing.matches.extend(matches);
+                } else {
+                    results.push(YaraScanResult {
+                        rule_id: rule_name.clone(),
+                        rule_name,
+                        matches,
+                        severity,
                     });
                 }
             }
         }
-
-        if !matches.is_empty() {
-            let severity = match rule.namespace.as_str() {
-                "malware" => Severity::High,
-                _ => Severity::Medium,
-            };
-            results.push(YaraScanResult {
-                rule_id: rule.id.clone(),
-                rule_name: rule.name.clone(),
-                matches,
-                severity,
-            });
-        }
     }
 
     Ok(results)
-}
-
-fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    if needle.is_empty() || haystack.len() < needle.len() {
-        return None;
-    }
-    haystack.windows(needle.len()).position(|w| w == needle)
 }
 
 // ============================================================================

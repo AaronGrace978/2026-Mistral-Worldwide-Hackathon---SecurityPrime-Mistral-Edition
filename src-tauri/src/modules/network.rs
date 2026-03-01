@@ -44,6 +44,8 @@ pub struct NetworkConnection {
     pub bytes_sent: u64,
     pub bytes_received: u64,
     pub established_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remote_hostname: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,6 +150,12 @@ fn parse_netstat_line(line: &str, process_names: &HashMap<u32, String>) -> Optio
         .cloned()
         .unwrap_or_else(|| format!("PID:{}", pid));
     
+    let remote_hostname = if remote_address != "0.0.0.0" && remote_address != "*" && remote_address != "::" {
+        resolve_hostname(&remote_address)
+    } else {
+        None
+    };
+
     Some(NetworkConnection {
         id: generate_id(),
         process_name,
@@ -158,9 +166,10 @@ fn parse_netstat_line(line: &str, process_names: &HashMap<u32, String>) -> Optio
         remote_port,
         protocol,
         state,
-        bytes_sent: 0, // netstat doesn't provide this
+        bytes_sent: 0,
         bytes_received: 0,
         established_at: chrono::Utc::now().to_rfc3339(),
+        remote_hostname,
     })
 }
 
@@ -253,6 +262,11 @@ pub fn get_stats() -> Result<NetworkStats, String> {
         (sent_rate, recv_rate)
     };
     
+    // Count suspicious connections by inspecting current connections
+    let suspicious_connections = count_suspicious_connections();
+    // Count blocked connections from Windows Firewall logs
+    let blocked_connections = count_blocked_connections();
+
     Ok(NetworkStats {
         total_connections,
         active_connections,
@@ -260,8 +274,8 @@ pub fn get_stats() -> Result<NetworkStats, String> {
         bytes_received_total,
         bytes_sent_per_sec,
         bytes_received_per_sec,
-        blocked_connections: 0, // Would need firewall log parsing
-        suspicious_connections: 0, // Calculated separately when viewing connections
+        blocked_connections,
+        suspicious_connections,
     })
 }
 
@@ -359,25 +373,109 @@ fn format_mac_address(mac: sysinfo::MacAddr) -> String {
     format!("{}", mac)
 }
 
-/// Resolve IP address to hostname (with caching for performance)
+/// DNS cache for resolved hostnames
+static DNS_CACHE: Lazy<RwLock<HashMap<String, Option<String>>>> = Lazy::new(|| {
+    RwLock::new(HashMap::new())
+});
+
+/// Resolve IP address to hostname via real reverse DNS lookup (with cache)
 pub fn resolve_hostname(ip: &str) -> Option<String> {
-    use std::net::ToSocketAddrs;
-    
-    // Quick check for local/special addresses
-    if ip == "0.0.0.0" || ip == "127.0.0.1" || ip == "::1" {
+    if ip == "0.0.0.0" || ip == "127.0.0.1" || ip == "::1" || ip == "::" || ip == "*" {
         return Some("localhost".to_string());
     }
-    
-    // Try to resolve (with timeout)
-    let addr = format!("{}:0", ip);
-    if let Ok(mut addrs) = addr.to_socket_addrs() {
-        if let Some(_socket_addr) = addrs.next() {
-            // In production, would do actual reverse DNS lookup
-            // For now, return None to avoid blocking
-            return None;
+
+    // Check cache first
+    {
+        let cache = DNS_CACHE.read();
+        if let Some(result) = cache.get(ip) {
+            return result.clone();
         }
     }
-    
-    None
+
+    // Perform real reverse DNS lookup
+    let result = {
+        use std::net::IpAddr;
+        match ip.parse::<IpAddr>() {
+            Ok(addr) => {
+                match dns_lookup::lookup_addr(&addr) {
+                    Ok(hostname) => {
+                        if hostname == ip {
+                            None
+                        } else {
+                            Some(hostname)
+                        }
+                    }
+                    Err(_) => None,
+                }
+            }
+            Err(_) => None,
+        }
+    };
+
+    // Cache the result (limit cache size)
+    {
+        let mut cache = DNS_CACHE.write();
+        if cache.len() < 2000 {
+            cache.insert(ip.to_string(), result.clone());
+        }
+    }
+
+    result
+}
+
+/// Count suspicious connections from current netstat output
+fn count_suspicious_connections() -> u32 {
+    let output = match hidden_command("netstat")
+        .args(&["-an"])
+        .output() {
+        Ok(o) => o,
+        Err(_) => return 0,
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut count = 0u32;
+
+    for line in stdout.lines().skip(4) {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 3 { continue; }
+
+        let protocol = parts[0].to_uppercase();
+        if protocol != "TCP" && protocol != "UDP" { continue; }
+
+        // Check remote address for suspicious ports
+        if let Some(remote) = parts.get(2) {
+            if let Some(port_str) = remote.rsplit(':').next() {
+                if let Ok(port) = port_str.parse::<u16>() {
+                    if SUSPICIOUS_PORTS.contains(&port) {
+                        count += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    count
+}
+
+/// Count recently blocked connections from Windows Firewall event log
+fn count_blocked_connections() -> u32 {
+    #[cfg(windows)]
+    {
+        let output = match hidden_command("powershell")
+            .args(&[
+                "-NoProfile", "-Command",
+                "(Get-WinEvent -FilterHashtable @{LogName='Security';Id=5157} -MaxEvents 100 -ErrorAction SilentlyContinue | Measure-Object).Count"
+            ])
+            .output() {
+            Ok(o) => o,
+            Err(_) => return 0,
+        };
+
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        stdout.parse::<u32>().unwrap_or(0)
+    }
+
+    #[cfg(not(windows))]
+    { 0 }
 }
 

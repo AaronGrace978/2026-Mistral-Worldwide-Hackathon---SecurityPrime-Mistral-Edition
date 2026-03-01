@@ -406,6 +406,7 @@ export interface NetworkConnection {
 	bytes_sent: number;
 	bytes_received: number;
 	established_at: string;
+	remote_hostname?: string;
 }
 
 export interface NetworkStats {

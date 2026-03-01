@@ -536,7 +536,7 @@
 										</div>
 										<div class="col-span-2">
 											<p class="font-mono text-xs">{conn.remote_address}</p>
-											<p class="text-xs text-muted-foreground">:{conn.remote_port}</p>
+											<p class="text-xs text-muted-foreground">:{conn.remote_port}{#if conn.remote_hostname} ({conn.remote_hostname}){/if}</p>
 										</div>
 										<div class="col-span-1">
 											<Badge variant="secondary" class="text-xs">

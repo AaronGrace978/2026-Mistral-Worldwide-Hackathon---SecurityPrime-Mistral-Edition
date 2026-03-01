@@ -2,10 +2,11 @@
 	export let size = 80;
 	export let className = '';
 	export let animated = false;
+	export let useAnimatedWebp = false;
 </script>
 
 <img
-	src="/images/pixel-cat.webp"
+	src={useAnimatedWebp ? '/images/animated-sitting-cat.webp' : '/images/pixel-cat.webp'}
 	alt="Le Security Copilot mascot"
 	width={size}
 	height={size}

@@ -36,11 +36,11 @@
 		FolderSearch,
 		Terminal,
 		FileSearch,
-		Volume2
+		Volume2,
+		Info
 	} from 'lucide-svelte';
-	import MistralCat from '$lib/components/MistralCat.svelte';
-	import MistralLogo from '$lib/components/MistralLogo.svelte';
 	import MistralPixelCat from '$lib/components/MistralPixelCat.svelte';
+	import MistralLogo from '$lib/components/MistralLogo.svelte';
 
 	interface ModelInfo {
 		name: string;
@@ -94,13 +94,13 @@
 		gfm: true
 	});
 
-	const MODEL_META: Record<string, { icon: typeof Brain; label: string; color: string; desc: string }> = {
-		'mistral-large': { icon: Brain, label: 'Mistral Large', color: 'text-orange-400', desc: 'Deep security analysis' },
-		'ministral': { icon: Zap, label: 'Ministral', color: 'text-yellow-400', desc: 'Fast triage' },
-		'devstral': { icon: Code, label: 'Devstral', color: 'text-emerald-400', desc: 'Code & remediation' },
-		'pixtral': { icon: ImageIcon, label: 'Pixtral', color: 'text-violet-400', desc: 'Visual analysis' },
-		'mixtral': { icon: Cpu, label: 'Mixtral', color: 'text-blue-400', desc: 'MoE reasoning' },
-		'codestral': { icon: Terminal, label: 'Codestral', color: 'text-cyan-400', desc: 'Code generation' }
+	const MODEL_META: Record<string, { icon: typeof Brain; label: string; chatLabel: string; color: string; desc: string }> = {
+		'mistral-large': { icon: Brain, label: 'Mistral Large', chatLabel: 'SecurityPrime Mistral Edition', color: 'text-orange-400', desc: 'Deep security analysis' },
+		'ministral': { icon: Zap, label: 'Ministral', chatLabel: 'SecurityPrime Ministral Edition', color: 'text-yellow-400', desc: 'Fast triage' },
+		'devstral': { icon: Code, label: 'Devstral', chatLabel: 'SecurityPrime Devstral Edition', color: 'text-emerald-400', desc: 'Code & remediation' },
+		'pixtral': { icon: ImageIcon, label: 'Pixtral', chatLabel: 'SecurityPrime Pixtral Edition', color: 'text-violet-400', desc: 'Visual analysis' },
+		'mixtral': { icon: Cpu, label: 'Mixtral', chatLabel: 'SecurityPrime Mixtral Edition', color: 'text-blue-400', desc: 'MoE reasoning' },
+		'codestral': { icon: Terminal, label: 'Codestral', chatLabel: 'SecurityPrime Codestral Edition', color: 'text-cyan-400', desc: 'Code generation' }
 	};
 
 	function getModelMeta(name: string) {
@@ -108,7 +108,7 @@
 		for (const [key, meta] of Object.entries(MODEL_META)) {
 			if (lower.includes(key)) return meta;
 		}
-		return { icon: Brain, label: name, color: 'text-orange-400', desc: 'Mistral model' };
+		return { icon: Brain, label: name, chatLabel: 'SecurityPrime', color: 'text-orange-400', desc: 'Mistral model' };
 	}
 
 	$: mistralModels = (status?.available_models ?? []).filter((model) => {
@@ -322,7 +322,7 @@
 </script>
 
 <svelte:head>
-	<title>Mistral Security Copilot - Cyber Security Prime</title>
+	<title>SecurityPrime AI Copilot</title>
 </svelte:head>
 
 <div class="h-full flex flex-col gap-4">
@@ -334,9 +334,9 @@
 		</div>
 			<div>
 				<h1 class="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-					<span class="text-mistral-gradient">Le</span> Security Copilot
+					<span class="text-mistral-gradient">SecurityPrime</span> Copilot
 					<Badge variant="outline" class="text-[10px] font-mono tracking-wider border-[#FF8205]/40 text-[#FF8205]">
-						MISTRAL AI
+						POWERED BY MISTRAL
 					</Badge>
 				</h1>
 				<p class="text-muted-foreground text-sm mt-0.5">
@@ -430,7 +430,7 @@
 						{/if}
 					</div>
 					<p class="text-xs text-muted-foreground mb-3">
-						Your API key is encrypted and stored in your operating system's native keychain — never in config files.
+						Your SecurityPrime API key is encrypted and stored in your operating system's native keychain — never in config files.
 					</p>
 
 					{#if hasApiKey}
@@ -458,14 +458,14 @@
 										type="text"
 										bind:value={apiKey}
 										class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
-										placeholder="Enter your Mistral API key"
+										placeholder="Enter your SecurityPrime API key"
 								/>
 							{:else}
 								<input
 									type="password"
 									bind:value={apiKey}
 									class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
-									placeholder="Enter your Mistral API key"
+									placeholder="Enter your SecurityPrime API key"
 									/>
 								{/if}
 								<button
@@ -493,9 +493,9 @@
 						<Server class="w-4 h-4" />
 						<span>
 							{#if status?.connected}
-								{mistralModels.length} Mistral model{mistralModels.length !== 1 ? 's' : ''} available
+								{mistralModels.length} model{mistralModels.length !== 1 ? 's' : ''} available
 							{:else}
-								Add your Mistral API key above to connect
+								Add your SecurityPrime API key above to connect
 							{/if}
 						</span>
 					</div>
@@ -549,7 +549,7 @@
 				<!-- Empty State -->
 				<div class="h-full flex flex-col items-center justify-center text-center">
 					<div class="mb-6 relative">
-						<MistralPixelCat size={120} animated={true} />
+						<MistralPixelCat size={120} animated={true} useAnimatedWebp={true} />
 						<div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-20 h-2 bg-primary/10 rounded-full blur-sm" />
 					</div>
 					<p class="text-xl font-semibold text-foreground mb-1">What can I help you secure?</p>
@@ -596,71 +596,75 @@
 					</div>
 				</div>
 			{:else}
-				{#each messages as message, i}
-					<div class="flex gap-3 {message.role === 'user' ? 'flex-row-reverse' : ''} animate-in">
-						<!-- Avatar -->
-						<div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
-							{message.role === 'user' ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'mistral-avatar'}">
-							{#if message.role === 'user'}
-								<span class="text-xs font-bold text-white">U</span>
-							{:else}
-								<MistralCat size={20} />
-							{/if}
+			{#each messages as message, i}
+				{#if message.role === 'user'}
+					<!-- User Message -->
+					<div class="flex gap-3 flex-row-reverse animate-in">
+						<div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-600">
+							<span class="text-xs font-bold text-white">U</span>
 						</div>
-
-						<!-- Message Bubble -->
-						<div class="max-w-[80%] min-w-0 {message.role === 'user' ? 'ml-auto' : ''}">
-							{#if message.role === 'assistant' && message.model}
+						<div class="max-w-[80%] min-w-0 ml-auto">
+							<div class="rounded-2xl px-4 py-3 bg-blue-600/20 border border-blue-500/20">
+								<p class="text-sm whitespace-pre-wrap text-foreground">{message.content}</p>
+							</div>
+						</div>
+					</div>
+				{:else}
+					<!-- Assistant Message — Pixel Kitty Style -->
+					<div class="assistant-msg-wrap animate-in">
+						<div class="assistant-msg-bubble">
+							<!-- Header: Cat avatar + model name + timestamp -->
+							<div class="assistant-msg-header">
+								<div class="assistant-cat-avatar">
+									<MistralPixelCat size={32} useAnimatedWebp={true} />
+								</div>
+							{#if message.model}
 								{@const meta = getModelMeta(message.model)}
-								<div class="flex items-center gap-1.5 mb-1 text-[10px] {meta.color} font-medium">
-									<svelte:component this={meta.icon} class="w-3 h-3" />
-									{meta.label}
-									{#if message.timestamp}
-										<span class="text-muted-foreground ml-1">{timeAgo(message.timestamp)}</span>
+								<span class="assistant-model-name {meta.color}">
+									{meta.chatLabel}
+								</span>
+							{/if}
+								{#if message.timestamp}
+									<span class="assistant-timestamp">{timeAgo(message.timestamp)}</span>
+								{/if}
+							</div>
+
+							<!-- Content -->
+							<div class="assistant-msg-body">
+								<div class="prose prose-sm dark:prose-invert max-w-none message-content">
+									{#if message.streaming && message.content === ''}
+										<div class="flex items-center gap-2 text-sm text-muted-foreground">
+											<Loader2 class="w-4 h-4 animate-spin text-orange-400" />
+											<span class="animate-pulse">Analyzing...</span>
+										</div>
+									{:else}
+										{@html renderMarkdown(message.content)}
+										{#if message.streaming}
+											<span class="inline-block w-2 h-4 bg-orange-400 animate-pulse ml-0.5 rounded-sm" />
+										{/if}
 									{/if}
 								</div>
-							{/if}
-
-							<div class="rounded-2xl px-4 py-3 {message.role === 'user'
-								? 'bg-blue-600/20 border border-blue-500/20'
-								: 'bg-muted/40 border border-border/50'}">
-								{#if message.role === 'assistant'}
-									<div class="prose prose-sm dark:prose-invert max-w-none message-content">
-										{#if message.streaming && message.content === ''}
-											<div class="flex items-center gap-2 text-sm text-muted-foreground">
-												<Loader2 class="w-4 h-4 animate-spin text-orange-400" />
-												<span class="animate-pulse">Analyzing...</span>
-											</div>
-										{:else}
-											{@html renderMarkdown(message.content)}
-											{#if message.streaming}
-												<span class="inline-block w-2 h-4 bg-orange-400 animate-pulse ml-0.5 rounded-sm" />
+								{#if !message.streaming && message.content && hasElevenlabsKey}
+									<div class="flex items-center gap-1 mt-2 pt-2 border-t border-orange-200/20 dark:border-orange-900/30">
+										<button
+											class="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded"
+											on:click={() => speakMessage(i)}
+										>
+											{#if speakingIdx === i}
+												<Loader2 class="w-3 h-3 animate-spin" />
+												<span>Speaking...</span>
+											{:else}
+												<Volume2 class="w-3 h-3" />
+												<span>Speak</span>
 											{/if}
-										{/if}
+										</button>
 									</div>
-									{#if !message.streaming && message.content && hasElevenlabsKey}
-										<div class="flex items-center gap-1 mt-2 pt-2 border-t border-border/30">
-											<button
-												class="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded"
-												on:click={() => speakMessage(i)}
-											>
-												{#if speakingIdx === i}
-													<Loader2 class="w-3 h-3 animate-spin" />
-													<span>Speaking...</span>
-												{:else}
-													<Volume2 class="w-3 h-3" />
-													<span>Speak</span>
-												{/if}
-											</button>
-										</div>
-									{/if}
-								{:else}
-									<p class="text-sm whitespace-pre-wrap text-foreground">{message.content}</p>
 								{/if}
 							</div>
 						</div>
 					</div>
-				{/each}
+				{/if}
+			{/each}
 			{/if}
 		</CardContent>
 
@@ -832,6 +836,63 @@
 
 	:global(.message-content strong) {
 		color: hsl(var(--foreground));
+	}
+
+	/* ---- Pixel Kitty assistant message styling ---- */
+	.assistant-msg-wrap {
+		max-width: 85%;
+	}
+
+	.assistant-msg-bubble {
+		border-radius: 1rem;
+		overflow: hidden;
+		border: 1px solid rgba(255, 175, 100, 0.25);
+		background:
+			linear-gradient(135deg, rgba(255, 240, 220, 0.08) 0%, rgba(255, 200, 140, 0.04) 100%);
+		box-shadow: 0 2px 12px rgba(255, 140, 30, 0.06);
+	}
+
+	:global(.dark) .assistant-msg-bubble,
+	:global([data-theme="dark"]) .assistant-msg-bubble {
+		background:
+			linear-gradient(135deg, rgba(255, 140, 30, 0.06) 0%, rgba(180, 100, 30, 0.03) 100%);
+		border-color: rgba(255, 140, 30, 0.15);
+	}
+
+	.assistant-msg-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.6rem 1rem 0;
+	}
+
+	.assistant-cat-avatar {
+		width: 32px;
+		height: 32px;
+		border-radius: 8px;
+		overflow: hidden;
+		flex-shrink: 0;
+		background: rgba(255, 140, 30, 0.1);
+		border: 1.5px solid rgba(255, 140, 30, 0.3);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.assistant-model-name {
+		font-size: 0.82rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+	}
+
+	.assistant-timestamp {
+		font-size: 0.7rem;
+		color: hsl(var(--muted-foreground));
+		opacity: 0.7;
+	}
+
+	.assistant-msg-body {
+		padding: 0.5rem 1rem 0.75rem;
 	}
 
 	.animate-in {

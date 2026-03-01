@@ -615,7 +615,10 @@
 									All-in-one cybersecurity suite
 								</p>
 							<p class="text-xs text-muted-foreground mt-1">
-								Version 1.0.0 (Mistral Hackathon 2026)
+								Version 1.0.0 — Built for Mistral AI Worldwide Hackathon 2026
+							</p>
+							<p class="text-[10px] text-muted-foreground mt-0.5 opacity-80">
+								Powered by Mistral Large, Pixtral, Ministral, Devstral (api.mistral.ai)
 							</p>
 							</div>
 						</div>

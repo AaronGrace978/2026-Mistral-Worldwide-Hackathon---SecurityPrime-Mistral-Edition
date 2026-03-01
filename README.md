@@ -8,7 +8,13 @@
 
 SecurityPrime is a full-featured endpoint security application built with a Rust backend (Tauri) and a SvelteKit frontend, featuring deep integration with Mistral AI for intelligent threat analysis, behavioral detection, and security automation.
 
-Built for the **2026 Mistral Global Online Hackathon**.
+Built for the **Mistral AI Worldwide Hackathon 2026** (Feb 28 – Mar 1, 2026).
+
+### Mistral AI usage in this project
+- **Mistral API** (api.mistral.ai): Security Copilot chat, PRIME briefings, threat prediction, behavioral analysis, Investigation Dossier narration
+- **Pixtral**: Screenshot/evidence analysis in Investigation Dossier (vision)
+- **Ollama** (Mistral models): Fallback when using Ollama Cloud API key
+- All AI-generated security briefings and detective-style narration are powered by Mistral models.
 
 ---
 

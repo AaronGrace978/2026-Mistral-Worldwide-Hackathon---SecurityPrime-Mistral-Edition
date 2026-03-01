@@ -1601,20 +1601,17 @@ pub struct PrimeBriefing {
     pub facts_count: usize,
 }
 
-/// Gather live system telemetry and have Mistral write a detective-style briefing.
-/// This is the "gimmick" — PRIME narrates what it sees happening on the system.
+/// Gather live system telemetry and have the AI write a detective-style briefing.
+/// Uses smart_chat (Mistral direct → Ollama fallback) so it works with either key.
 #[tauri::command]
 pub async fn generate_prime_briefing() -> Result<PrimeBriefing, String> {
-    let api_key = get_mistral_direct_key()
-        .ok_or("Mistral API key required for PRIME briefings")?;
-
-    // Gather live telemetry from other modules
     let now = chrono::Local::now();
     let time_str = now.format("%I:%M %p").to_string();
     let date_str = now.format("%A, %B %e, %Y").to_string();
 
-    // System info
-    let sys = sysinfo::System::new_all();
+    // Gather live telemetry
+    let mut sys = sysinfo::System::new_all();
+    sys.refresh_all();
     let cpus = sys.cpus();
     let cpu_usage = if cpus.is_empty() { 0.0 } else {
         cpus.iter().map(|c| c.cpu_usage()).sum::<f32>() / cpus.len() as f32
@@ -1624,7 +1621,6 @@ pub async fn generate_prime_briefing() -> Result<PrimeBriefing, String> {
     let mem_pct = (used_mem / total_mem) * 100.0;
     let process_count = sys.processes().len();
 
-    // Network connections via netstat
     let netstat = std::process::Command::new("netstat")
         .args(["-an"])
         .output();
@@ -1637,7 +1633,6 @@ pub async fn generate_prime_briefing() -> Result<PrimeBriefing, String> {
         (0, 0)
     };
 
-    // Top processes by name (unique, first 10)
     let mut top_procs: Vec<String> = sys.processes().values()
         .map(|p| p.name().to_string())
         .collect();
@@ -1645,7 +1640,6 @@ pub async fn generate_prime_briefing() -> Result<PrimeBriefing, String> {
     top_procs.dedup();
     top_procs.truncate(15);
 
-    // Build the prompt
     let telemetry = format!(
         "Current time: {time} on {date}\n\
          CPU usage: {cpu:.1}%\n\
@@ -1653,15 +1647,9 @@ pub async fn generate_prime_briefing() -> Result<PrimeBriefing, String> {
          Active processes: {procs}\n\
          Network: {est} established connections, {lis} listening ports\n\
          Notable processes running: {top}\n",
-        time = time_str,
-        date = date_str,
-        cpu = cpu_usage,
-        mem_used = used_mem,
-        mem_total = total_mem,
-        mem_pct = mem_pct,
-        procs = process_count,
-        est = established,
-        lis = listening,
+        time = time_str, date = date_str, cpu = cpu_usage,
+        mem_used = used_mem, mem_total = total_mem, mem_pct = mem_pct,
+        procs = process_count, est = established, lis = listening,
         top = top_procs.join(", ")
     );
 
@@ -1687,34 +1675,18 @@ pub async fn generate_prime_briefing() -> Result<PrimeBriefing, String> {
         telemetry = telemetry
     );
 
-    let client = Client::new();
-    let body = serde_json::json!({
-        "model": "mistral-large-latest",
-        "messages": [{ "role": "user", "content": prompt }],
-        "max_tokens": 800,
-        "temperature": 0.8,
-    });
+    // Use the existing smart_chat infrastructure (Mistral direct → Ollama fallback)
+    let client = get_or_create_client();
+    let messages = vec![
+        ChatMessage {
+            role: "user".to_string(),
+            content: prompt,
+        }
+    ];
+    let response = client.smart_chat(messages, None, Some(0.8)).await?;
+    let raw_content = response.message.content.clone();
 
-    let resp = client
-        .post(format!("{}/chat/completions", MISTRAL_API_BASE))
-        .header("Authorization", format!("Bearer {}", api_key))
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("Briefing request failed: {}", e))?;
-
-    if !resp.status().is_success() {
-        let s = resp.status();
-        let b = resp.text().await.unwrap_or_default();
-        return Err(format!("Briefing error ({}): {}", s, b));
-    }
-
-    let resp_json: serde_json::Value = resp.json().await
-        .map_err(|e| format!("Failed to parse briefing: {}", e))?;
-
-    let raw = resp_json["choices"][0]["message"]["content"]
-        .as_str()
-        .unwrap_or("{}")
+    let raw = raw_content
         .trim()
         .trim_start_matches("```json")
         .trim_start_matches("```")

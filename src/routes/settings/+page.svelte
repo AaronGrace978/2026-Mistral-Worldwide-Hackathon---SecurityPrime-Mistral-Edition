@@ -58,14 +58,45 @@
 	let savingMistralKey = false;
 	let savingOllamaKey = false;
 	let keyMsg = '';
+	let elevenlabsKeyInput = '';
+	let hasElevenlabsKey = false;
+	let savingElevenlabsKey = false;
 
 	async function loadApiKeyStatus() {
 		try {
 			hasMistralKey = await api.hasMistralApiKey();
 			hasOllamaKey = await api.hasOllamaApiKey();
+			hasElevenlabsKey = await api.hasElevenlabsApiKey();
 			activeProvider = await api.getAiProvider();
 		} catch (e) {
 			console.error('Failed to load API key status:', e);
+		}
+	}
+
+	async function saveElevenlabsKey() {
+		if (!elevenlabsKeyInput.trim()) return;
+		savingElevenlabsKey = true;
+		try {
+			await api.storeElevenlabsApiKey(elevenlabsKeyInput.trim());
+			hasElevenlabsKey = true;
+			elevenlabsKeyInput = '';
+			keyMsg = 'ElevenLabs API key saved securely.';
+			setTimeout(() => keyMsg = '', 3000);
+		} catch (e) {
+			keyMsg = 'Failed to save ElevenLabs key.';
+		} finally {
+			savingElevenlabsKey = false;
+		}
+	}
+
+	async function removeElevenlabsKey() {
+		try {
+			await api.deleteElevenlabsApiKey();
+			hasElevenlabsKey = false;
+			keyMsg = 'ElevenLabs API key removed.';
+			setTimeout(() => keyMsg = '', 3000);
+		} catch (e) {
+			keyMsg = 'Failed to remove ElevenLabs key.';
 		}
 	}
 
@@ -471,9 +502,45 @@
 						{/if}
 					</div>
 
+					<Separator />
+
+					<!-- ElevenLabs Voice Key -->
+					<div class="space-y-3">
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="font-medium">ElevenLabs Voice API Key</p>
+								<p class="text-xs text-muted-foreground">
+									Enables voice narration for PRIME briefings & Investigation Dossier — <a href="https://elevenlabs.io/app/settings/api-keys" class="underline text-primary" on:click|preventDefault={() => open('https://elevenlabs.io/app/settings/api-keys')}>Get your key</a>
+								</p>
+							</div>
+						</div>
+						{#if hasElevenlabsKey}
+							<div class="flex items-center gap-2">
+								<Badge variant="default" class="text-xs bg-green-600">
+									<Check class="w-3 h-3 mr-1" /> Active
+								</Badge>
+								<Button variant="ghost" size="sm" on:click={removeElevenlabsKey}>
+									<X class="w-4 h-4" />
+								</Button>
+							</div>
+						{:else}
+							<div class="flex gap-2">
+								<input
+									type="password"
+									bind:value={elevenlabsKeyInput}
+									placeholder="Enter your ElevenLabs API key..."
+									class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+								/>
+								<Button variant="cyber" size="sm" on:click={saveElevenlabsKey} disabled={savingElevenlabsKey || !elevenlabsKeyInput.trim()}>
+									{savingElevenlabsKey ? 'Saving...' : 'Save'}
+								</Button>
+							</div>
+						{/if}
+					</div>
+
 					<p class="text-xs text-muted-foreground">
 						Priority: Mistral API key is used first if set. Otherwise falls back to Ollama Cloud, then Ollama Local.
-						All keys are stored in your OS keychain — never in files.
+						ElevenLabs is optional — enables voice narration. All keys are stored in your OS keychain — never in files.
 					</p>
 				</CardContent>
 			</Card>

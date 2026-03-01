@@ -46,17 +46,21 @@
 	let systemInfo: api.SystemInfo | null = null;
 	let briefing: PrimeBriefing | null = null;
 	let briefingLoading = false;
+	let briefingError = '';
 	let briefingAudio: HTMLAudioElement | null = null;
 	let briefingPlaying = false;
 	let briefingNarrating = false;
 	let hasElevenlabsKey = false;
+	let hasAnyAiKey = false;
 
 	async function requestBriefing() {
 		briefingLoading = true;
+		briefingError = '';
 		try {
 			briefing = await api.generatePrimeBriefing();
-		} catch (e) {
-			console.error('Briefing failed:', e);
+		} catch (e: any) {
+			briefingError = e?.toString?.() ?? String(e);
+			briefing = null;
 		} finally {
 			briefingLoading = false;
 		}
@@ -65,8 +69,18 @@
 	async function speakBriefing() {
 		if (!briefing || briefingNarrating) return;
 		briefingNarrating = true;
+		briefingError = '';
 		try {
-			const audioB64 = await invoke<string>('narrate_dossier', { text: briefing.narrative, voiceId: null });
+			const text = briefing.narrative;
+			if (!text || text.length < 5) {
+				briefingError = 'Briefing text is empty — nothing to narrate';
+				return;
+			}
+			const audioB64 = await invoke<string>('narrate_dossier', { text, voiceId: null });
+			if (!audioB64 || audioB64.length < 100) {
+				briefingError = 'ElevenLabs returned empty audio — check your API key';
+				return;
+			}
 			const raw = atob(audioB64);
 			const arr = new Uint8Array(raw.length);
 			for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
@@ -75,10 +89,14 @@
 			if (briefingAudio) briefingAudio.pause();
 			briefingAudio = new Audio(url);
 			briefingAudio.addEventListener('ended', () => { briefingPlaying = false; });
-			briefingAudio.play();
+			briefingAudio.addEventListener('error', () => {
+				briefingError = 'Audio playback failed — the returned data may not be valid MP3';
+				briefingPlaying = false;
+			});
+			await briefingAudio.play();
 			briefingPlaying = true;
-		} catch (e) {
-			console.error('Narration failed:', e);
+		} catch (e: any) {
+			briefingError = `Voice narration failed: ${e?.toString?.() ?? e}`;
 		} finally {
 			briefingNarrating = false;
 		}
@@ -92,7 +110,12 @@
 		} finally {
 			loading = false;
 		}
-		try { hasElevenlabsKey = await invoke<boolean>('has_elevenlabs_api_key'); } catch { /* */ }
+		try {
+			hasElevenlabsKey = await invoke<boolean>('has_elevenlabs_api_key');
+			const hasMistral = await invoke<boolean>('has_mistral_api_key');
+			const hasOllama = await invoke<boolean>('has_ollama_api_key');
+			hasAnyAiKey = hasMistral || hasOllama;
+		} catch { /* */ }
 	});
 
 	async function refreshData() {
@@ -332,6 +355,9 @@
 								</div>
 								<p class="text-sm font-bold text-foreground mb-2">{briefing.headline}</p>
 								<p class="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{briefing.narrative}</p>
+								{#if briefingError}
+									<p class="text-xs text-red-400 mt-2">{briefingError}</p>
+								{/if}
 								<div class="flex items-center gap-3 mt-3">
 									<button
 										class="text-xs text-muted-foreground hover:text-amber-400 transition-colors flex items-center gap-1"
@@ -366,6 +392,11 @@
 								<div>
 									<p class="text-sm font-medium text-foreground">PRIME Intelligence Briefing</p>
 									<p class="text-xs text-muted-foreground">Get a live status report from your AI security analyst</p>
+									{#if briefingError}
+										<p class="text-xs text-red-400 mt-1.5">{briefingError}</p>
+									{:else if !hasAnyAiKey}
+										<p class="text-xs text-amber-500/90 mt-1.5">Add an API key (Mistral or Ollama) in Copilot settings first</p>
+									{/if}
 								</div>
 							</div>
 							<Button variant="outline" size="sm" class="gap-1.5 border-amber-500/30 text-amber-400 hover:bg-amber-500/10" on:click={requestBriefing} disabled={briefingLoading}>

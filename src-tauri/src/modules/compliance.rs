@@ -638,7 +638,7 @@ pub fn report_breach_incident(title: String, description: String, affected_subje
     state.breach_incidents.push(breach);
 
     // Recalculate compliance scores after breach
-    let mut module = ComplianceModule::default();
+    let module = ComplianceModule::default();
     module.calculate_compliance_scores(&mut state);
 
     Ok(breach_id)

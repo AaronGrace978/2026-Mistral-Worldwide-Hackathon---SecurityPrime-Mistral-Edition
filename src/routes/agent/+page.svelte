@@ -134,7 +134,9 @@
 
 	async function checkApiKey() {
 		try {
-			hasApiKey = await invoke<boolean>('has_ollama_api_key');
+			const hasMistral = await invoke<boolean>('has_mistral_api_key');
+			const hasOllama = await invoke<boolean>('has_ollama_api_key');
+			hasApiKey = hasMistral || hasOllama;
 		} catch (e) {
 			console.error('Failed to check API key:', e);
 			hasApiKey = false;
@@ -145,6 +147,7 @@
 		if (!apiKey.trim()) return;
 		savingApiKey = true;
 		try {
+			await invoke('store_mistral_api_key', { apiKey: apiKey.trim() });
 			await invoke('store_ollama_api_key', { apiKey: apiKey.trim() });
 			hasApiKey = true;
 			apiKey = '';
@@ -160,6 +163,7 @@
 	async function deleteApiKey() {
 		savingApiKey = true;
 		try {
+			await invoke('delete_mistral_api_key');
 			await invoke('delete_ollama_api_key');
 			hasApiKey = false;
 			await invoke('reset_agent_client');
@@ -421,14 +425,14 @@
 										type="text"
 										bind:value={apiKey}
 										class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
-										placeholder="Enter your Ollama Cloud / Mistral API key"
-									/>
-								{:else}
-									<input
-										type="password"
-										bind:value={apiKey}
-										class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
-										placeholder="Enter your Ollama Cloud / Mistral API key"
+										placeholder="Enter your Mistral API key"
+								/>
+							{:else}
+								<input
+									type="password"
+									bind:value={apiKey}
+									class="w-full pl-10 pr-10 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500/30 focus:outline-none"
+									placeholder="Enter your Mistral API key"
 									/>
 								{/if}
 								<button
@@ -458,7 +462,7 @@
 							{#if status?.connected}
 								{mistralModels.length} Mistral model{mistralModels.length !== 1 ? 's' : ''} available
 							{:else}
-								Endpoint unreachable — run <code class="px-1 py-0.5 bg-muted rounded font-mono">ollama serve</code>
+								Add your Mistral API key above to connect
 							{/if}
 						</span>
 					</div>

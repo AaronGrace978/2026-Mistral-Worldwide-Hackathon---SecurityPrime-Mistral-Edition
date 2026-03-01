@@ -646,6 +646,10 @@ export async function removeFirewallRule(ruleId: string): Promise<boolean> {
 	return safeInvoke<boolean>('remove_firewall_rule', { ruleId });
 }
 
+export async function toggleFirewallRule(ruleName: string, enabled: boolean): Promise<boolean> {
+	return safeInvoke<boolean>('toggle_firewall_rule', { ruleName, enabled });
+}
+
 // ============================================================================
 // Encryption API
 // ============================================================================

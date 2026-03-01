@@ -117,6 +117,7 @@ fn main() {
             cmd::get_firewall_rules,
             cmd::add_firewall_rule,
             cmd::remove_firewall_rule,
+            cmd::toggle_firewall_rule,
             // Encryption commands
             cmd::encrypt_file,
             cmd::decrypt_file,

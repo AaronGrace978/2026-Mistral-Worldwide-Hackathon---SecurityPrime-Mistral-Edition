@@ -1073,11 +1073,13 @@ fn calculate_behavior_score(process: &sysinfo::Process) -> f64 {
         score += 10.0;
     }
 
-    if process.name().to_lowercase().contains("chrome") {
-        score += 5.0;
+    // Flag processes running from temp directories
+    if let Some(exe) = process.exe() {
+        let path_lower = exe.to_string_lossy().to_lowercase();
+        if path_lower.contains("\\temp\\") || path_lower.contains("\\tmp\\") || path_lower.contains("/tmp/") {
+            score += 15.0;
+        }
     }
-
-    score += 8.0;
 
     score.min(100.0)
 }
@@ -1111,12 +1113,13 @@ fn detect_behavioral_anomalies(process: &sysinfo::Process) -> Vec<BehavioralAnom
         });
     }
 
-    if process.name().to_lowercase().contains("notepad") {
+    // Only flag Notepad if it has suspiciously high CPU (>5%) suggesting code injection
+    if process.name().to_lowercase().contains("notepad") && process.cpu_usage() > 5.0 {
         anomalies.push(BehavioralAnomaly {
-            anomaly_type: "Unexpected Network Activity".to_string(),
-            severity: Severity::High,
-            description: "Notepad.exe making network connections, which is suspicious".to_string(),
-            confidence: 0.95,
+            anomaly_type: "Suspicious Process Behavior".to_string(),
+            severity: Severity::Medium,
+            description: format!("Notepad.exe showing unusual CPU activity ({:.1}%), possible code injection", process.cpu_usage()),
+            confidence: 0.70,
             timestamp: now(),
         });
     }
@@ -1330,7 +1333,7 @@ pub async fn perform_advanced_scan(
 
     match scan_type {
         ScanType::Basic => {
-            results.basic_results = Some(get_scan_results("advanced").unwrap_or_default());
+            results.basic_results = Some(get_scan_results("last").unwrap_or_default());
         }
         ScanType::MemoryForensics => {
             results.memory_results = Some(scan_memory_forensics().await?);
@@ -1344,7 +1347,7 @@ pub async fn perform_advanced_scan(
             }
         }
         ScanType::Comprehensive => {
-            results.basic_results = Some(get_scan_results("comprehensive").unwrap_or_default());
+            results.basic_results = Some(get_scan_results("last").unwrap_or_default());
             results.memory_results = Some(scan_memory_forensics().await?);
             results.behavioral_results = Some(analyze_behavioral_patterns().await?);
 

@@ -17,7 +17,7 @@ static APP_STATE: Lazy<RwLock<AppState>> = Lazy::new(|| RwLock::new(AppState::de
 
 // Maximum number of activities/alerts to keep in memory
 const MAX_ACTIVITIES: usize = 100;
-const MAX_ALERTS: usize = 50;
+const _MAX_ALERTS: usize = 50;
 
 #[derive(Debug, Clone, Default)]
 struct AppState {
@@ -972,6 +972,13 @@ pub async fn add_firewall_rule(rule: firewall::FirewallRule) -> Result<firewall:
 #[tauri::command]
 pub async fn remove_firewall_rule(rule_id: String) -> Result<bool, String> {
     tokio::task::spawn_blocking(move || firewall::remove_rule(&rule_id))
+        .await
+        .map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn toggle_firewall_rule(rule_name: String, enabled: bool) -> Result<bool, String> {
+    tokio::task::spawn_blocking(move || firewall::toggle_rule(&rule_name, enabled))
         .await
         .map_err(|e| format!("Task failed: {}", e))?
 }

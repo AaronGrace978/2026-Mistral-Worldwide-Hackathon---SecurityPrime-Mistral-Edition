@@ -116,9 +116,19 @@
 	}
 
 	async function toggleRule(ruleId: string, currentState: boolean) {
-		firewallRules = firewallRules.map(r => 
+		const rule = firewallRules.find(r => r.id === ruleId);
+		if (!rule) return;
+		firewallRules = firewallRules.map(r =>
 			r.id === ruleId ? { ...r, enabled: !currentState } : r
 		);
+		try {
+			await api.toggleFirewallRule(rule.name, !currentState);
+		} catch (err) {
+			firewallRules = firewallRules.map(r =>
+				r.id === ruleId ? { ...r, enabled: currentState } : r
+			);
+			error = `Failed to toggle rule: ${err}. Requires administrator privileges.`;
+		}
 	}
 
 	async function deleteRule(ruleId: string) {

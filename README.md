@@ -173,6 +173,12 @@ This is the killer feature. Trust through observability — and a hidden RPG whe
 - SQL injection protection via parameterized queries throughout
 - No secrets are stored in configuration files or source code
 
+## Important Message To VibeCoders ❤️
+
+  - If you have Cursor installed or any Agentic software have it pull the repo and set it up for you, should be easy
+  - https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition  <- Copy it like this into a prompt
+  - Example: Yo, Agent set up this Repo for me https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition
+
 ## Credits
 
 Open-source libraries and APIs are credited in [ATTRIBUTION.md](ATTRIBUTION.md).
@@ -184,3 +190,6 @@ MIT — see [LICENSE](LICENSE)
 ---
 
 *Built with Rust, Svelte, and Mistral AI.* | [BostonAI.io](https://bostonai.io)
+  
+  
+-With Love, Aaron Grace🦖

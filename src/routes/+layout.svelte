@@ -5,6 +5,7 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import ScanWidget from '$lib/components/ScanWidget.svelte';
 	import MistralPixelCat from '$lib/components/MistralPixelCat.svelte';
+	import CatBoyGame from '$lib/components/CatBoyGame.svelte';
 	import '../app.css';
 
 	let sidebarCollapsed = false;
@@ -34,7 +35,7 @@
 				<!-- Loading state -->
 				<div class="flex items-center justify-center h-full">
 					<div class="flex flex-col items-center gap-5">
-						<MistralPixelCat size={120} animated={true} />
+						<MistralPixelCat size={120} animated={true} clickable={true} />
 						<div class="flex flex-col items-center gap-2">
 							<span class="text-sm text-foreground font-bold tracking-wider">
 								SECURITY PRIME
@@ -59,6 +60,7 @@
 </div>
 
 <ScanWidget />
+<CatBoyGame />
 
 <!-- Global scan line effect (optimized: uses will-change for GPU acceleration, reduced opacity) -->
 <!-- Note: Animation paused when tab is not visible via CSS media query -->

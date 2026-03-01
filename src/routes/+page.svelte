@@ -184,7 +184,7 @@
 				</div>
 			</div>
 			<div class="flex-shrink-0 hidden lg:block">
-				<MistralPixelCat size={100} animated={true} />
+				<MistralPixelCat size={100} animated={true} clickable={true} />
 			</div>
 		</div>
 	</div>
@@ -300,7 +300,7 @@
 					<div class="flex items-center gap-6">
 						<div class="relative flex-shrink-0">
 							<div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E10500] via-[#FF8205] to-[#FFD800] p-2">
-								<MistralPixelCat size={56} animated={true} />
+								<MistralPixelCat size={56} animated={true} clickable={true} />
 							</div>
 						</div>
 						<div class="flex-1 min-w-0">

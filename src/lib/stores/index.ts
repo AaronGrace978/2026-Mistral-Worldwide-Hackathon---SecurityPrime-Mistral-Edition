@@ -23,4 +23,6 @@ export {
 	type ModuleInfo 
 } from './modules';
 export { scanStore, isScanning, scanProgress } from './scanner';
+export { catBoyGame } from './catboy';
+
 

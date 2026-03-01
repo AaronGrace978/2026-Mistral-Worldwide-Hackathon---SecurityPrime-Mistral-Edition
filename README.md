@@ -177,7 +177,7 @@ This is the killer feature. Trust through observability — and a hidden RPG whe
 
   - If you have Cursor installed or any Agentic software have it pull the repo and set it up for you, should be easy
   - https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition  <- Copy it like this into a prompt
-  - Example: Yo, Agent set up this Repo for me https://github.com/AaronGrace978/2026-Mistral-Worldwide-Hackathon---SecurityPrime-Mistral-Edition
+  - Visit https://bostonai.io/products To Download Installer for Windows
 
 ## Credits
 

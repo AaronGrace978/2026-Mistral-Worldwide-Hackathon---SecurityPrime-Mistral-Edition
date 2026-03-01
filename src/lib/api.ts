@@ -1820,6 +1820,20 @@ export async function getElevenlabsVoices(): Promise<any> {
 	return safeInvoke<any>('get_elevenlabs_voices');
 }
 
+// PRIME Briefing
+export interface PrimeBriefing {
+	briefing_id: string;
+	timestamp: string;
+	narrative: string;
+	headline: string;
+	mood: string;
+	facts_count: number;
+}
+
+export async function generatePrimeBriefing(): Promise<PrimeBriefing> {
+	return safeInvoke<PrimeBriefing>('generate_prime_briefing');
+}
+
 // Pixtral Vision
 export async function analyzeImageWithPixtral(imageBase64: string, prompt?: string): Promise<string> {
 	return safeInvoke<string>('analyze_image_with_pixtral', {

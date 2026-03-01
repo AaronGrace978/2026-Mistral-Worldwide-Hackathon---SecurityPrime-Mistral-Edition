@@ -32,12 +32,57 @@
 		Calendar,
 		Users,
 		Globe,
-		Code
+		Code,
+		Radio,
+		Volume2,
+		Loader2,
+		FileSearch
 	} from 'lucide-svelte';
+	import { invoke } from '@tauri-apps/api/tauri';
 	import * as api from '$lib/api';
+	import type { PrimeBriefing } from '$lib/api';
 
 	let loading = true;
 	let systemInfo: api.SystemInfo | null = null;
+	let briefing: PrimeBriefing | null = null;
+	let briefingLoading = false;
+	let briefingAudio: HTMLAudioElement | null = null;
+	let briefingPlaying = false;
+	let briefingNarrating = false;
+	let hasElevenlabsKey = false;
+
+	async function requestBriefing() {
+		briefingLoading = true;
+		try {
+			briefing = await api.generatePrimeBriefing();
+		} catch (e) {
+			console.error('Briefing failed:', e);
+		} finally {
+			briefingLoading = false;
+		}
+	}
+
+	async function speakBriefing() {
+		if (!briefing || briefingNarrating) return;
+		briefingNarrating = true;
+		try {
+			const audioB64 = await invoke<string>('narrate_dossier', { text: briefing.narrative, voiceId: null });
+			const raw = atob(audioB64);
+			const arr = new Uint8Array(raw.length);
+			for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+			const blob = new Blob([arr], { type: 'audio/mpeg' });
+			const url = URL.createObjectURL(blob);
+			if (briefingAudio) briefingAudio.pause();
+			briefingAudio = new Audio(url);
+			briefingAudio.addEventListener('ended', () => { briefingPlaying = false; });
+			briefingAudio.play();
+			briefingPlaying = true;
+		} catch (e) {
+			console.error('Narration failed:', e);
+		} finally {
+			briefingNarrating = false;
+		}
+	}
 
 	onMount(async () => {
 		try {
@@ -47,6 +92,7 @@
 		} finally {
 			loading = false;
 		}
+		try { hasElevenlabsKey = await invoke<boolean>('has_elevenlabs_api_key'); } catch { /* */ }
 	});
 
 	async function refreshData() {
@@ -269,6 +315,74 @@
 			</Card>
 		</div>
 
+		<!-- PRIME Briefing -->
+		<div class="col-span-12">
+			<Card variant="glass" class="prime-briefing-card overflow-hidden">
+				<CardContent class="py-4">
+					{#if briefing && !briefingLoading}
+						<div class="flex items-start gap-4">
+							<div class="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
+								{briefing.mood === 'critical' ? 'bg-red-500/15' : briefing.mood === 'alert' ? 'bg-amber-500/15' : 'bg-emerald-500/15'}">
+								<Radio class="w-5 h-5 {briefing.mood === 'critical' ? 'text-red-400' : briefing.mood === 'alert' ? 'text-amber-400' : 'text-emerald-400'}" />
+							</div>
+							<div class="flex-1 min-w-0">
+								<div class="flex items-center gap-2 mb-1">
+									<span class="text-xs font-mono text-muted-foreground uppercase tracking-wider">PRIME BRIEFING</span>
+									<span class="text-[10px] font-mono text-muted-foreground">{briefing.timestamp}</span>
+								</div>
+								<p class="text-sm font-bold text-foreground mb-2">{briefing.headline}</p>
+								<p class="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{briefing.narrative}</p>
+								<div class="flex items-center gap-3 mt-3">
+									<button
+										class="text-xs text-muted-foreground hover:text-amber-400 transition-colors flex items-center gap-1"
+										on:click={requestBriefing}
+									>
+										<RefreshCw class="w-3 h-3" /> New briefing
+									</button>
+									{#if hasElevenlabsKey}
+										<button
+											class="text-xs text-muted-foreground hover:text-amber-400 transition-colors flex items-center gap-1"
+											on:click={speakBriefing}
+											disabled={briefingNarrating}
+										>
+											{#if briefingNarrating}
+												<Loader2 class="w-3 h-3 animate-spin" /> Generating...
+											{:else if briefingPlaying}
+												<Volume2 class="w-3 h-3 animate-pulse" /> Playing...
+											{:else}
+												<Volume2 class="w-3 h-3" /> Read aloud
+											{/if}
+										</button>
+									{/if}
+								</div>
+							</div>
+						</div>
+					{:else}
+						<div class="flex items-center justify-between">
+							<div class="flex items-center gap-3">
+								<div class="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
+									<Radio class="w-5 h-5 text-muted-foreground" />
+								</div>
+								<div>
+									<p class="text-sm font-medium text-foreground">PRIME Intelligence Briefing</p>
+									<p class="text-xs text-muted-foreground">Get a live status report from your AI security analyst</p>
+								</div>
+							</div>
+							<Button variant="outline" size="sm" class="gap-1.5 border-amber-500/30 text-amber-400 hover:bg-amber-500/10" on:click={requestBriefing} disabled={briefingLoading}>
+								{#if briefingLoading}
+									<Loader2 class="w-4 h-4 animate-spin" />
+									Analyzing...
+								{:else}
+									<Radio class="w-4 h-4" />
+									Brief Me
+								{/if}
+							</Button>
+						</div>
+					{/if}
+				</CardContent>
+			</Card>
+		</div>
+
 		<!-- Activity Log -->
 		<div class="col-span-12 lg:col-span-6">
 			<ActivityLog activities={$activities} maxHeight="350px" />
@@ -317,3 +431,12 @@
 		</CardContent>
 	</Card>
 </div>
+
+<style>
+	.prime-briefing-card {
+		border-color: rgba(245, 158, 11, 0.15);
+		background:
+			radial-gradient(circle at top right, rgba(245, 158, 11, 0.04), transparent 50%),
+			radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.03), transparent 50%);
+	}
+</style>

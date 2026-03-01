@@ -21,6 +21,11 @@ static NETWORK_CACHE: Lazy<RwLock<NetworkCache>> = Lazy::new(|| {
     RwLock::new(NetworkCache::default())
 });
 
+// Cached counts updated in the background so they never block the UI
+static CACHED_SUSPICIOUS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static CACHED_BLOCKED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static BG_REFRESH_STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 #[derive(Debug, Clone, Default)]
 struct NetworkCache {
     last_bytes_sent: u64,
@@ -150,10 +155,10 @@ fn parse_netstat_line(line: &str, process_names: &HashMap<u32, String>) -> Optio
         .cloned()
         .unwrap_or_else(|| format!("PID:{}", pid));
     
-    let remote_hostname = if remote_address != "0.0.0.0" && remote_address != "*" && remote_address != "::" {
-        resolve_hostname(&remote_address)
-    } else {
-        None
+    // DNS lookups are deferred — never block connection listing
+    let remote_hostname = {
+        let cache = DNS_CACHE.read();
+        cache.get(&remote_address).and_then(|v| v.clone())
     };
 
     Some(NetworkConnection {
@@ -218,6 +223,9 @@ fn get_process_names() -> Result<HashMap<u32, String>, String> {
 /// Get network statistics using sysinfo
 /// Optimized to avoid calling the slow get_connections() function
 pub fn get_stats() -> Result<NetworkStats, String> {
+    // Start background refresh thread on first call
+    ensure_background_refresh();
+
     // Get connection counts directly from netstat (much faster than parsing all details)
     let (total_connections, active_connections) = count_connections_fast()?;
     
@@ -262,10 +270,9 @@ pub fn get_stats() -> Result<NetworkStats, String> {
         (sent_rate, recv_rate)
     };
     
-    // Count suspicious connections by inspecting current connections
-    let suspicious_connections = count_suspicious_connections();
-    // Count blocked connections from Windows Firewall logs
-    let blocked_connections = count_blocked_connections();
+    // Use cached values — these are updated in the background, never block the UI
+    let suspicious_connections = CACHED_SUSPICIOUS.load(std::sync::atomic::Ordering::Relaxed);
+    let blocked_connections = CACHED_BLOCKED.load(std::sync::atomic::Ordering::Relaxed);
 
     Ok(NetworkStats {
         total_connections,
@@ -392,21 +399,21 @@ pub fn resolve_hostname(ip: &str) -> Option<String> {
         }
     }
 
-    // Perform real reverse DNS lookup
+    // Perform real reverse DNS lookup with a 2-second timeout to prevent hangs
+    let ip_owned = ip.to_string();
     let result = {
         use std::net::IpAddr;
-        match ip.parse::<IpAddr>() {
+        match ip_owned.parse::<IpAddr>() {
             Ok(addr) => {
-                match dns_lookup::lookup_addr(&addr) {
-                    Ok(hostname) => {
-                        if hostname == ip {
-                            None
-                        } else {
-                            Some(hostname)
-                        }
-                    }
-                    Err(_) => None,
-                }
+                let (tx, rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let r = match dns_lookup::lookup_addr(&addr) {
+                        Ok(hostname) if hostname != addr.to_string() => Some(hostname),
+                        _ => None,
+                    };
+                    let _ = tx.send(r);
+                });
+                rx.recv_timeout(std::time::Duration::from_secs(2)).unwrap_or(None)
             }
             Err(_) => None,
         }
@@ -421,6 +428,48 @@ pub fn resolve_hostname(ip: &str) -> Option<String> {
     }
 
     result
+}
+
+/// Start the background thread that periodically updates suspicious/blocked counts
+/// and pre-warms the DNS cache. Called lazily on first stats request.
+pub fn ensure_background_refresh() {
+    if BG_REFRESH_STARTED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return; // already started
+    }
+    std::thread::spawn(|| {
+        loop {
+            // Update suspicious count (runs netstat -an, fast)
+            let suspicious = count_suspicious_connections();
+            CACHED_SUSPICIOUS.store(suspicious, std::sync::atomic::Ordering::Relaxed);
+
+            // Update blocked count (PowerShell event log query, slow but off-thread)
+            let blocked = count_blocked_connections();
+            CACHED_BLOCKED.store(blocked, std::sync::atomic::Ordering::Relaxed);
+
+            // Pre-warm DNS cache for a few IPs from current connections
+            if let Ok(output) = hidden_command("netstat").args(&["-an"]).output() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let mut resolved = 0;
+                for line in stdout.lines().skip(4) {
+                    if resolved >= 10 { break; }
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 3 {
+                        if let Some((ip, _)) = parse_address(parts[2]) {
+                            if ip != "0.0.0.0" && ip != "*" && ip != "::" && ip != "127.0.0.1" {
+                                let already_cached = { DNS_CACHE.read().contains_key(&ip) };
+                                if !already_cached {
+                                    resolve_hostname(&ip);
+                                    resolved += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            std::thread::sleep(std::time::Duration::from_secs(60));
+        }
+    });
 }
 
 /// Count suspicious connections from current netstat output

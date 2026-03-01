@@ -227,6 +227,8 @@ fn main() {
             // Investigation Dossier commands
             modules::agent::generate_investigation_dossier,
             modules::agent::narrate_dossier,
+            // PRIME Briefing
+            modules::agent::generate_prime_briefing,
             // Firewall export/import commands
             modules::firewall::export_firewall_rules,
             modules::firewall::import_firewall_rules,

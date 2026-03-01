@@ -1426,7 +1426,7 @@ pub async fn text_to_speech(text: String, voice_id: Option<String>) -> Result<St
     let api_key = secure_storage::get_elevenlabs_api_key()
         .map_err(|_| "ElevenLabs API key not found. Add it in Settings.".to_string())?;
 
-    let voice = voice_id.unwrap_or_else(|| "pNInz6obpgDQGcFmaJgB".to_string()); // "Adam" voice
+    let voice = voice_id.unwrap_or_else(|| "5cVNuMBWdU6DJjJJdH0A".to_string());
 
     let client = Client::new();
     let url = format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice);
@@ -1585,6 +1585,158 @@ pub async fn analyze_image_with_pixtral(
     }));
 
     Ok(full_response)
+}
+
+// ============================================================================
+// PRIME Briefing — ambient intelligence status narration
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrimeBriefing {
+    pub briefing_id: String,
+    pub timestamp: String,
+    pub narrative: String,
+    pub headline: String,
+    pub mood: String,       // "calm", "alert", "critical"
+    pub facts_count: usize,
+}
+
+/// Gather live system telemetry and have Mistral write a detective-style briefing.
+/// This is the "gimmick" — PRIME narrates what it sees happening on the system.
+#[tauri::command]
+pub async fn generate_prime_briefing() -> Result<PrimeBriefing, String> {
+    let api_key = get_mistral_direct_key()
+        .ok_or("Mistral API key required for PRIME briefings")?;
+
+    // Gather live telemetry from other modules
+    let now = chrono::Local::now();
+    let time_str = now.format("%I:%M %p").to_string();
+    let date_str = now.format("%A, %B %e, %Y").to_string();
+
+    // System info
+    let sys = sysinfo::System::new_all();
+    let cpus = sys.cpus();
+    let cpu_usage = if cpus.is_empty() { 0.0 } else {
+        cpus.iter().map(|c| c.cpu_usage()).sum::<f32>() / cpus.len() as f32
+    };
+    let total_mem = sys.total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+    let used_mem = sys.used_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+    let mem_pct = (used_mem / total_mem) * 100.0;
+    let process_count = sys.processes().len();
+
+    // Network connections via netstat
+    let netstat = std::process::Command::new("netstat")
+        .args(["-an"])
+        .output();
+    let (established, listening) = if let Ok(out) = netstat {
+        let text = String::from_utf8_lossy(&out.stdout);
+        let est = text.lines().filter(|l| l.contains("ESTABLISHED")).count();
+        let lis = text.lines().filter(|l| l.contains("LISTENING")).count();
+        (est, lis)
+    } else {
+        (0, 0)
+    };
+
+    // Top processes by name (unique, first 10)
+    let mut top_procs: Vec<String> = sys.processes().values()
+        .map(|p| p.name().to_string())
+        .collect();
+    top_procs.sort();
+    top_procs.dedup();
+    top_procs.truncate(15);
+
+    // Build the prompt
+    let telemetry = format!(
+        "Current time: {time} on {date}\n\
+         CPU usage: {cpu:.1}%\n\
+         Memory: {mem_used:.1} GB / {mem_total:.1} GB ({mem_pct:.0}% used)\n\
+         Active processes: {procs}\n\
+         Network: {est} established connections, {lis} listening ports\n\
+         Notable processes running: {top}\n",
+        time = time_str,
+        date = date_str,
+        cpu = cpu_usage,
+        mem_used = used_mem,
+        mem_total = total_mem,
+        mem_pct = mem_pct,
+        procs = process_count,
+        est = established,
+        lis = listening,
+        top = top_procs.join(", ")
+    );
+
+    let prompt = format!(
+        "You are PRIME, an elite AI cybersecurity analyst embedded in a desktop security suite.\n\
+         You speak in first person like a detective giving a status briefing — confident, observant,\n\
+         occasionally dramatic but always grounded in data.\n\n\
+         Here is the live telemetry from the system you're protecting:\n\n\
+         {telemetry}\n\n\
+         Write a short briefing (3-5 paragraphs, under 200 words total). Things to include:\n\
+         - Open with the time and a one-line mood read (\"Quiet night\" or \"Busy afternoon\")\n\
+         - Call out anything interesting: high CPU, many connections, suspicious process names\n\
+         - Mention specific numbers — processes, connections, memory\n\
+         - Sprinkle in one cybersecurity fact or tip naturally\n\
+         - Close with your assessment: is the system looking clean, or should the operator worry?\n\
+         - Tone: film-noir detective meets SOC analyst. Dry wit welcome.\n\n\
+         Also provide:\n\
+         1. A one-line HEADLINE (max 8 words, punchy)\n\
+         2. A MOOD: one of \"calm\", \"alert\", or \"critical\"\n\n\
+         Format your response as JSON:\n\
+         {{\"headline\": \"...\", \"mood\": \"...\", \"narrative\": \"...\"}}\n\
+         Return ONLY valid JSON, no markdown fences.",
+        telemetry = telemetry
+    );
+
+    let client = Client::new();
+    let body = serde_json::json!({
+        "model": "mistral-large-latest",
+        "messages": [{ "role": "user", "content": prompt }],
+        "max_tokens": 800,
+        "temperature": 0.8,
+    });
+
+    let resp = client
+        .post(format!("{}/chat/completions", MISTRAL_API_BASE))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Briefing request failed: {}", e))?;
+
+    if !resp.status().is_success() {
+        let s = resp.status();
+        let b = resp.text().await.unwrap_or_default();
+        return Err(format!("Briefing error ({}): {}", s, b));
+    }
+
+    let resp_json: serde_json::Value = resp.json().await
+        .map_err(|e| format!("Failed to parse briefing: {}", e))?;
+
+    let raw = resp_json["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap_or("{}")
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+
+    let parsed: serde_json::Value = serde_json::from_str(raw).unwrap_or_else(|_| {
+        serde_json::json!({
+            "headline": "System Status Report",
+            "mood": "calm",
+            "narrative": raw
+        })
+    });
+
+    Ok(PrimeBriefing {
+        briefing_id: format!("PB-{}", now.format("%H%M%S")),
+        timestamp: now.format("%Y-%m-%d %H:%M:%S").to_string(),
+        narrative: parsed["narrative"].as_str().unwrap_or(raw).to_string(),
+        headline: parsed["headline"].as_str().unwrap_or("Status Report").to_string(),
+        mood: parsed["mood"].as_str().unwrap_or("calm").to_string(),
+        facts_count: process_count,
+    })
 }
 
 // ============================================================================
@@ -1820,8 +1972,7 @@ pub async fn narrate_dossier(
     let api_key = secure_storage::get_elevenlabs_api_key()
         .map_err(|_| "ElevenLabs API key not found. Add it in Settings to enable voice briefings.".to_string())?;
 
-    // "Adam" is a great default detective voice — deep, authoritative
-    let voice = voice_id.unwrap_or_else(|| "pNInz6obpgDQGcFmaJgB".to_string());
+    let voice = voice_id.unwrap_or_else(|| "5cVNuMBWdU6DJjJJdH0A".to_string());
 
     let client = Client::new();
     let url = format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice);

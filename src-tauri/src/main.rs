@@ -216,6 +216,17 @@ fn main() {
             modules::agent::delete_mistral_api_key,
             modules::agent::get_ai_provider,
             modules::agent::reset_agent_client,
+            // ElevenLabs TTS commands
+            modules::agent::store_elevenlabs_api_key,
+            modules::agent::has_elevenlabs_api_key,
+            modules::agent::delete_elevenlabs_api_key,
+            modules::agent::text_to_speech,
+            modules::agent::get_elevenlabs_voices,
+            // Pixtral Vision commands
+            modules::agent::analyze_image_with_pixtral,
+            // Investigation Dossier commands
+            modules::agent::generate_investigation_dossier,
+            modules::agent::narrate_dossier,
             // Firewall export/import commands
             modules::firewall::export_firewall_rules,
             modules::firewall::import_firewall_rules,

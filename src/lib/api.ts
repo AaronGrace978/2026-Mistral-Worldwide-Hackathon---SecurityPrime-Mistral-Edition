@@ -1755,6 +1755,80 @@ export async function dbSetSetting(key: string, value: string): Promise<void> {
 }
 
 // ============================================================================
+// Investigation Dossier API
+// ============================================================================
+
+export interface DossierFinding {
+	id: string;
+	timestamp: string;
+	category: string;
+	title: string;
+	detail: string;
+	severity: string;
+	confidence: number;
+}
+
+export interface InvestigationDossier {
+	case_id: string;
+	created_at: string;
+	classification: string;
+	subject: string;
+	findings: DossierFinding[];
+	risk_assessment: string;
+	narrative: string;
+	analyst_notes: string;
+}
+
+export async function generateInvestigationDossier(
+	imageBase64: string,
+	context?: string
+): Promise<InvestigationDossier> {
+	return safeInvoke<InvestigationDossier>('generate_investigation_dossier', {
+		imageBase64,
+		context: context ?? null,
+	});
+}
+
+export async function narrateDossier(
+	text: string,
+	voiceId?: string
+): Promise<string> {
+	return safeInvoke<string>('narrate_dossier', {
+		text,
+		voiceId: voiceId ?? null,
+	});
+}
+
+// ElevenLabs management
+export async function storeElevenlabsApiKey(apiKey: string): Promise<void> {
+	return safeInvoke<void>('store_elevenlabs_api_key', { apiKey });
+}
+
+export async function hasElevenlabsApiKey(): Promise<boolean> {
+	return safeInvoke<boolean>('has_elevenlabs_api_key');
+}
+
+export async function deleteElevenlabsApiKey(): Promise<void> {
+	return safeInvoke<void>('delete_elevenlabs_api_key');
+}
+
+export async function textToSpeech(text: string, voiceId?: string): Promise<string> {
+	return safeInvoke<string>('text_to_speech', { text, voiceId: voiceId ?? null });
+}
+
+export async function getElevenlabsVoices(): Promise<any> {
+	return safeInvoke<any>('get_elevenlabs_voices');
+}
+
+// Pixtral Vision
+export async function analyzeImageWithPixtral(imageBase64: string, prompt?: string): Promise<string> {
+	return safeInvoke<string>('analyze_image_with_pixtral', {
+		imageBase64,
+		prompt: prompt ?? null,
+	});
+}
+
+// ============================================================================
 // Mock Data for Development
 // ============================================================================
 

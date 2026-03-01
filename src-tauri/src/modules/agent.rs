@@ -11,6 +11,7 @@ use crate::modules::secure_storage;
 use std::path::Path;
 use std::fs;
 use std::collections::HashMap;
+use base64::Engine as _;
 
 const MISTRAL_DEFAULT_MODEL: &str = "mistral-large-3:675b";
 const MISTRAL_FAST_MODEL: &str = "ministral:8b";
@@ -1396,6 +1397,467 @@ pub async fn get_ai_provider() -> Result<String, String> {
     } else {
         Ok("ollama-local".to_string())
     }
+}
+
+// ============================================================================
+// ElevenLabs TTS Integration
+// ============================================================================
+
+#[tauri::command]
+pub async fn store_elevenlabs_api_key(api_key: String) -> Result<(), String> {
+    secure_storage::store_elevenlabs_api_key(&api_key)
+        .map_err(|e| format!("Failed to store ElevenLabs API key: {}", e))
+}
+
+#[tauri::command]
+pub async fn has_elevenlabs_api_key() -> Result<bool, String> {
+    Ok(secure_storage::elevenlabs_api_key_exists())
+}
+
+#[tauri::command]
+pub async fn delete_elevenlabs_api_key() -> Result<(), String> {
+    secure_storage::delete_elevenlabs_api_key()
+        .map_err(|e| format!("Failed to delete ElevenLabs API key: {}", e))
+}
+
+/// Convert text to speech using ElevenLabs API, returns base64-encoded MP3 audio
+#[tauri::command]
+pub async fn text_to_speech(text: String, voice_id: Option<String>) -> Result<String, String> {
+    let api_key = secure_storage::get_elevenlabs_api_key()
+        .map_err(|_| "ElevenLabs API key not found. Add it in Settings.".to_string())?;
+
+    let voice = voice_id.unwrap_or_else(|| "pNInz6obpgDQGcFmaJgB".to_string()); // "Adam" voice
+
+    let client = Client::new();
+    let url = format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice);
+
+    let body = serde_json::json!({
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.75,
+            "style": 0.3,
+            "use_speaker_boost": true
+        }
+    });
+
+    let response = client
+        .post(&url)
+        .header("xi-api-key", &api_key)
+        .header("Content-Type", "application/json")
+        .header("Accept", "audio/mpeg")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("ElevenLabs API request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("ElevenLabs API error ({}): {}", status, body));
+    }
+
+    let audio_bytes = response.bytes().await
+        .map_err(|e| format!("Failed to read audio response: {}", e))?;
+
+    Ok(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &audio_bytes))
+}
+
+/// Get available ElevenLabs voices
+#[tauri::command]
+pub async fn get_elevenlabs_voices() -> Result<serde_json::Value, String> {
+    let api_key = secure_storage::get_elevenlabs_api_key()
+        .map_err(|_| "ElevenLabs API key not found".to_string())?;
+
+    let client = Client::new();
+    let response = client
+        .get("https://api.elevenlabs.io/v1/voices")
+        .header("xi-api-key", &api_key)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch voices: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Failed to fetch voices: {}", response.status()));
+    }
+
+    response.json().await.map_err(|e| format!("Failed to parse voices: {}", e))
+}
+
+// ============================================================================
+// Pixtral Vision Analysis
+// ============================================================================
+
+/// Analyze an image using Pixtral vision model via Mistral API
+#[tauri::command]
+pub async fn analyze_image_with_pixtral(
+    image_base64: String,
+    prompt: Option<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<String, String> {
+    let api_key = get_mistral_direct_key()
+        .ok_or("Mistral API key required for Pixtral vision analysis")?;
+
+    let analysis_prompt = prompt.unwrap_or_else(|| {
+        "You are a cybersecurity forensic analyst. Analyze this image for security-relevant information. \
+         Look for: suspicious processes, network connections, error messages, malware indicators, \
+         configuration issues, exposed credentials, suspicious URLs, or any security anomalies. \
+         Provide a detailed security assessment.".to_string()
+    });
+
+    let messages = serde_json::json!([
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": analysis_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": format!("data:image/png;base64,{}", image_base64)
+                    }
+                }
+            ]
+        }
+    ]);
+
+    let body = serde_json::json!({
+        "model": "pixtral-large-latest",
+        "messages": messages,
+        "max_tokens": 4096,
+        "temperature": 0.3,
+        "stream": true,
+    });
+
+    let client = Client::new();
+    let response = client
+        .post(format!("{}/chat/completions", MISTRAL_API_BASE))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Pixtral API request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let err_body = response.text().await.unwrap_or_default();
+        return Err(format!("Pixtral API error ({}): {}", status, err_body));
+    }
+
+    // Stream the response
+    let mut full_response = String::new();
+    let mut stream = response.bytes_stream();
+
+    use futures_util::StreamExt;
+
+    while let Some(chunk_result) = stream.next().await {
+        match chunk_result {
+            Ok(chunk) => {
+                let chunk_str = String::from_utf8_lossy(&chunk);
+                for line in chunk_str.lines() {
+                    let data_line = line.strip_prefix("data: ").unwrap_or(line);
+                    if data_line == "[DONE]" || data_line.is_empty() { continue; }
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data_line) {
+                        if let Some(content) = parsed["choices"][0]["delta"]["content"].as_str() {
+                            full_response.push_str(content);
+                            let _ = app_handle.emit_all("pixtral-stream", serde_json::json!({
+                                "content": content,
+                                "done": false,
+                            }));
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Pixtral stream error: {}", e);
+                break;
+            }
+        }
+    }
+
+    let _ = app_handle.emit_all("pixtral-stream", serde_json::json!({
+        "content": "",
+        "done": true,
+    }));
+
+    Ok(full_response)
+}
+
+// ============================================================================
+// Investigation Dossier — Pixtral forensics + Mistral narration + ElevenLabs TTS
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DossierFinding {
+    pub id: String,
+    pub timestamp: String,
+    pub category: String,
+    pub title: String,
+    pub detail: String,
+    pub severity: String,
+    pub confidence: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InvestigationDossier {
+    pub case_id: String,
+    pub created_at: String,
+    pub classification: String,
+    pub subject: String,
+    pub findings: Vec<DossierFinding>,
+    pub risk_assessment: String,
+    pub narrative: String,
+    pub analyst_notes: String,
+}
+
+/// Generate a full investigation dossier from an uploaded image.
+/// Pixtral analyzes the image → Mistral Large writes a detective-style briefing.
+#[tauri::command]
+pub async fn generate_investigation_dossier(
+    image_base64: String,
+    context: Option<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<InvestigationDossier, String> {
+    let api_key = get_mistral_direct_key()
+        .ok_or("Mistral API key required for investigation dossier")?;
+
+    let ctx = context.unwrap_or_else(|| "General security investigation".to_string());
+    let case_id = format!("CSP-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"));
+    let created_at = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
+
+    // ── Stage 1: Pixtral forensic image analysis ────────────────────────
+    let _ = app_handle.emit_all("dossier-progress", serde_json::json!({
+        "stage": "analyzing", "message": "Pixtral is examining the evidence..."
+    }));
+
+    let pixtral_prompt = format!(
+        "You are an elite cybersecurity forensic analyst codenamed PRIME.\n\
+         Context: {}\n\n\
+         Analyze this screenshot/image with extreme attention to detail.\n\
+         Return your findings as a JSON array. Each finding must have:\n\
+         - \"category\": one of [\"network\", \"process\", \"credential\", \"malware\", \"config\", \"anomaly\", \"info\"]\n\
+         - \"title\": short headline (max 10 words)\n\
+         - \"detail\": 1-3 sentence explanation of what you see\n\
+         - \"severity\": one of [\"critical\", \"high\", \"medium\", \"low\", \"info\"]\n\
+         - \"confidence\": 0.0 to 1.0\n\n\
+         Look for: running processes, open ports, network connections, error messages,\n\
+         exposed credentials, suspicious URLs, misconfigurations, browser tabs,\n\
+         terminal commands, open applications, taskbar items, system tray icons,\n\
+         IP addresses, file paths, registry entries, or anything security-relevant.\n\n\
+         Be thorough. Even mundane details matter in forensics.\n\
+         Return ONLY valid JSON — no markdown, no code fences.\n\
+         Example: [{{\"category\":\"process\",\"title\":\"Suspicious PowerShell\",\"detail\":\"...\",\"severity\":\"high\",\"confidence\":0.9}}]",
+        ctx
+    );
+
+    let pixtral_messages = serde_json::json!([{
+        "role": "user",
+        "content": [
+            { "type": "text", "text": pixtral_prompt },
+            { "type": "image_url", "image_url": { "url": format!("data:image/png;base64,{}", image_base64) } }
+        ]
+    }]);
+
+    let pixtral_body = serde_json::json!({
+        "model": "pixtral-large-latest",
+        "messages": pixtral_messages,
+        "max_tokens": 4096,
+        "temperature": 0.2,
+    });
+
+    let client = Client::new();
+    let pixtral_resp = client
+        .post(format!("{}/chat/completions", MISTRAL_API_BASE))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&pixtral_body)
+        .send()
+        .await
+        .map_err(|e| format!("Pixtral request failed: {}", e))?;
+
+    if !pixtral_resp.status().is_success() {
+        let s = pixtral_resp.status();
+        let b = pixtral_resp.text().await.unwrap_or_default();
+        return Err(format!("Pixtral error ({}): {}", s, b));
+    }
+
+    let pixtral_json: serde_json::Value = pixtral_resp.json().await
+        .map_err(|e| format!("Failed to parse Pixtral response: {}", e))?;
+
+    let raw_findings = pixtral_json["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap_or("[]")
+        .to_string();
+
+    // Parse findings - strip markdown fences if Pixtral wraps them
+    let clean_findings = raw_findings
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+
+    let parsed_findings: Vec<serde_json::Value> = serde_json::from_str(clean_findings)
+        .unwrap_or_else(|_| {
+            vec![serde_json::json!({
+                "category": "info",
+                "title": "Image analyzed",
+                "detail": raw_findings,
+                "severity": "info",
+                "confidence": 0.5
+            })]
+        });
+
+    let ts_now = chrono::Utc::now();
+    let findings: Vec<DossierFinding> = parsed_findings.iter().enumerate().map(|(i, f)| {
+        DossierFinding {
+            id: format!("F-{:03}", i + 1),
+            timestamp: (ts_now - chrono::Duration::minutes(i as i64))
+                .format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+            category: f["category"].as_str().unwrap_or("info").to_string(),
+            title: f["title"].as_str().unwrap_or("Finding").to_string(),
+            detail: f["detail"].as_str().unwrap_or("").to_string(),
+            severity: f["severity"].as_str().unwrap_or("info").to_string(),
+            confidence: f["confidence"].as_f64().unwrap_or(0.5),
+        }
+    }).collect();
+
+    // Risk assessment
+    let crit = findings.iter().filter(|f| f.severity == "critical").count();
+    let high = findings.iter().filter(|f| f.severity == "high").count();
+    let risk_assessment = if crit > 0 {
+        "CRITICAL — Immediate action required".to_string()
+    } else if high > 0 {
+        "HIGH — Significant security concerns identified".to_string()
+    } else if findings.iter().any(|f| f.severity == "medium") {
+        "MODERATE — Items warrant further investigation".to_string()
+    } else {
+        "LOW — No immediate threats detected".to_string()
+    };
+
+    let classification = if crit > 0 { "TOP SECRET" }
+        else if high > 0 { "CLASSIFIED" }
+        else { "CONFIDENTIAL" }.to_string();
+
+    // ── Stage 2: Mistral Large writes detective-style narration ──────────
+    let _ = app_handle.emit_all("dossier-progress", serde_json::json!({
+        "stage": "narrating", "message": "Composing intelligence briefing..."
+    }));
+
+    let findings_summary: Vec<String> = findings.iter().map(|f| {
+        format!("[{}] {} ({}): {}", f.severity.to_uppercase(), f.title, f.category, f.detail)
+    }).collect();
+
+    let narration_prompt = format!(
+        "You are PRIME, an elite AI cybersecurity analyst delivering a threat intelligence briefing.\n\
+         You speak like a seasoned detective — precise, dramatic where warranted, matter-of-fact.\n\
+         Use timestamps, reference specific findings by their IDs, and connect dots between evidence.\n\n\
+         Case ID: {}\n\
+         Classification: {}\n\
+         Risk Assessment: {}\n\n\
+         Findings:\n{}\n\n\
+         Write a 3-5 paragraph intelligence briefing narration. First person.\n\
+         Start with something like \"Case {} — here's what I found.\"\n\
+         Reference specific timestamps and finding IDs.\n\
+         End with your recommendation: what the operator should do next.\n\
+         Tone: think film-noir detective meets cyber threat analyst.\n\
+         Keep it under 300 words — this will be read aloud.",
+        case_id, classification, risk_assessment,
+        findings_summary.join("\n"), case_id
+    );
+
+    let narr_body = serde_json::json!({
+        "model": "mistral-large-latest",
+        "messages": [{ "role": "user", "content": narration_prompt }],
+        "max_tokens": 1500,
+        "temperature": 0.7,
+    });
+
+    let narr_resp = client
+        .post(format!("{}/chat/completions", MISTRAL_API_BASE))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&narr_body)
+        .send()
+        .await
+        .map_err(|e| format!("Narration request failed: {}", e))?;
+
+    let narrative = if narr_resp.status().is_success() {
+        let narr_json: serde_json::Value = narr_resp.json().await.unwrap_or_default();
+        narr_json["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("Briefing generation failed — please review findings manually.")
+            .to_string()
+    } else {
+        "Unable to generate narration. Review the findings above.".to_string()
+    };
+
+    let _ = app_handle.emit_all("dossier-progress", serde_json::json!({
+        "stage": "complete", "message": "Dossier ready."
+    }));
+
+    Ok(InvestigationDossier {
+        case_id,
+        created_at,
+        classification,
+        subject: ctx,
+        findings,
+        risk_assessment,
+        narrative,
+        analyst_notes: format!("{} findings extracted. {} critical, {} high severity.",
+            parsed_findings.len(), crit, high),
+    })
+}
+
+/// Narrate text through ElevenLabs TTS — returns base64 audio
+#[tauri::command]
+pub async fn narrate_dossier(
+    text: String,
+    voice_id: Option<String>,
+) -> Result<String, String> {
+    let api_key = secure_storage::get_elevenlabs_api_key()
+        .map_err(|_| "ElevenLabs API key not found. Add it in Settings to enable voice briefings.".to_string())?;
+
+    // "Adam" is a great default detective voice — deep, authoritative
+    let voice = voice_id.unwrap_or_else(|| "pNInz6obpgDQGcFmaJgB".to_string());
+
+    let client = Client::new();
+    let url = format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice);
+
+    let body = serde_json::json!({
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.65,
+            "similarity_boost": 0.8,
+            "style": 0.45,
+            "use_speaker_boost": true
+        }
+    });
+
+    let response = client
+        .post(&url)
+        .header("xi-api-key", &api_key)
+        .header("Content-Type", "application/json")
+        .header("Accept", "audio/mpeg")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("ElevenLabs API request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let err = response.text().await.unwrap_or_default();
+        return Err(format!("ElevenLabs error ({}): {}", status, err));
+    }
+
+    let audio_bytes = response.bytes().await
+        .map_err(|e| format!("Failed to read audio: {}", e))?;
+
+    let encoded = base64::engine::general_purpose::STANDARD.encode(&audio_bytes);
+    Ok(encoded)
 }
 
 // ============================================================================

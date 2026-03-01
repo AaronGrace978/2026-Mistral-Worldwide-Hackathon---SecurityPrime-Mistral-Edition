@@ -253,11 +253,16 @@
 								</div>
 								<span class="text-[10px] text-muted-foreground mt-1 block">4 models routed</span>
 							</div>
+						<div class="flex gap-2">
 						<Button variant="cyber" class="gap-2" on:click={() => goto('/agent')}>
 							<Bot class="w-4 h-4" />
 							Open Copilot
 							<ArrowRight class="w-4 h-4" />
 						</Button>
+						<Button variant="outline" class="gap-2 border-amber-500/30 text-amber-400 hover:bg-amber-500/10" on:click={() => goto('/investigation')}>
+							Investigation
+						</Button>
+						</div>
 						</div>
 					</div>
 				</CardContent>

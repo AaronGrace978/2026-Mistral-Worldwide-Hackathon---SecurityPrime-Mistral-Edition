@@ -7,6 +7,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Switch } from '$lib/components/ui/switch';
 	import { marked } from 'marked';
+	import { goto } from '$app/navigation';
 	import {
 		Bot,
 		Send,
@@ -33,7 +34,9 @@
 		Shield,
 		AlertTriangle,
 		FolderSearch,
-		Terminal
+		Terminal,
+		FileSearch,
+		Volume2
 	} from 'lucide-svelte';
 	import MistralCat from '$lib/components/MistralCat.svelte';
 	import MistralLogo from '$lib/components/MistralLogo.svelte';
@@ -82,6 +85,9 @@
 	let unlistenDone: UnlistenFn | null = null;
 	let chatContainer: HTMLElement;
 	let activeModel = '';
+	let speakingIdx = -1;
+	let speakingAudio: HTMLAudioElement | null = null;
+	let hasElevenlabsKey = false;
 
 	marked.setOptions({
 		breaks: true,
@@ -130,6 +136,7 @@
 		await checkStatus();
 		await checkApiKey();
 		await setupStreamListeners();
+		try { hasElevenlabsKey = await invoke<boolean>('has_elevenlabs_api_key'); } catch { /* */ }
 	});
 
 	async function checkApiKey() {
@@ -276,6 +283,32 @@
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
 			sendMessage();
+		}
+	}
+
+	async function speakMessage(idx: number) {
+		const msg = messages[idx];
+		if (!msg || msg.role !== 'assistant' || speakingIdx === idx) {
+			if (speakingAudio) { speakingAudio.pause(); speakingAudio = null; }
+			speakingIdx = -1;
+			return;
+		}
+
+		speakingIdx = idx;
+		try {
+			const plain = msg.content.replace(/[#*`_~>\[\]()]/g, '').slice(0, 2000);
+			const audioB64 = await invoke<string>('narrate_dossier', { text: plain, voiceId: null });
+			const raw = atob(audioB64);
+			const arr = new Uint8Array(raw.length);
+			for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+			const blob = new Blob([arr], { type: 'audio/mpeg' });
+			const url = URL.createObjectURL(blob);
+			if (speakingAudio) speakingAudio.pause();
+			speakingAudio = new Audio(url);
+			speakingAudio.addEventListener('ended', () => { speakingIdx = -1; });
+			speakingAudio.play();
+		} catch {
+			speakingIdx = -1;
 		}
 	}
 
@@ -499,6 +532,10 @@
 						<FolderSearch class="w-3.5 h-3.5 mr-1" />
 						Scan Folder
 					</Button>
+					<Button variant="ghost" size="sm" on:click={() => goto('/investigation')} class="text-xs h-8 text-amber-400 hover:text-amber-300">
+						<FileSearch class="w-3.5 h-3.5 mr-1" />
+						Investigation
+					</Button>
 					<div class="w-px h-5 bg-border mx-1" />
 					<Button variant="ghost" size="sm" on:click={clearSession} class="h-8 w-8 p-0">
 						<Trash2 class="w-4 h-4" />
@@ -550,12 +587,11 @@
 						</button>
 						<button
 							class="quick-action-card group"
-							on:click={() => quickAction('Explain ransomware attack chains and how to prevent them')}
-							disabled={!status?.connected}
+							on:click={() => goto('/investigation')}
 						>
-							<Sparkles class="w-5 h-5 text-violet-400 mb-2 group-hover:scale-110 transition-transform" />
-							<span class="text-sm font-medium">Learn ransomware</span>
-							<span class="text-xs text-muted-foreground">Attack chains & defense</span>
+							<FileSearch class="w-5 h-5 text-amber-400 mb-2 group-hover:scale-110 transition-transform" />
+							<span class="text-sm font-medium">Investigation Dossier</span>
+							<span class="text-xs text-muted-foreground">Pixtral vision + voice briefing</span>
 						</button>
 					</div>
 				</div>
@@ -602,6 +638,22 @@
 											{/if}
 										{/if}
 									</div>
+									{#if !message.streaming && message.content && hasElevenlabsKey}
+										<div class="flex items-center gap-1 mt-2 pt-2 border-t border-border/30">
+											<button
+												class="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded"
+												on:click={() => speakMessage(i)}
+											>
+												{#if speakingIdx === i}
+													<Loader2 class="w-3 h-3 animate-spin" />
+													<span>Speaking...</span>
+												{:else}
+													<Volume2 class="w-3 h-3" />
+													<span>Speak</span>
+												{/if}
+											</button>
+										</div>
+									{/if}
 								{:else}
 									<p class="text-sm whitespace-pre-wrap text-foreground">{message.content}</p>
 								{/if}

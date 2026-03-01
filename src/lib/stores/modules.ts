@@ -22,7 +22,8 @@ import {
 	Zap,
 	Rocket,
 	Wand2,
-	Target
+	Target,
+	FileSearch
 } from 'lucide-svelte';
 
 export interface ModuleInfo {
@@ -136,6 +137,15 @@ export const allModules: ModuleInfo[] = [
 		route: '/agent',
 		category: 'ai',
 		color: 'cyber-orange'
+	},
+	{
+		id: 'investigation',
+		name: 'Investigation',
+		description: 'AI forensic dossier with Pixtral vision & voice briefing',
+		icon: FileSearch,
+		route: '/investigation',
+		category: 'ai',
+		color: 'neon-pink'
 	},
 	{
 		id: 'analytics',

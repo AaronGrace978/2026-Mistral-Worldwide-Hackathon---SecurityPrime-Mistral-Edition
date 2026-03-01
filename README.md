@@ -138,6 +138,33 @@ SecurityPrime/
 └── docs/                   # Documentation
 ```
 
+## Easter Egg: CatBoy Advance
+
+**Click the pixel cat anywhere in the app** to launch **KITTYBOUND** — a full Mother/EarthBound-inspired GBA-style RPG hidden inside SecurityPrime.
+
+<details>
+<summary>🎮 Game Features</summary>
+
+- **Fake GBA boot screen** — "CatBoy™ Advance" with chiptune jingle
+- **Psychedelic battle backgrounds** — Per-scanline sine wave distortion with dual-layer HSL color cycling, just like EarthBound
+- **Turn-based RPG combat** — FIGHT / PSI / ITEM / RUN menu, rolling HP odometer, SMAAAASH!! critical hits (2.5x damage)
+- **Overworld exploration** — 30×20 tile map with trees, paths, water, flowers, and a safe zone building
+- **3 NPCs** — Elder Cat (lore), Nurse Whiskers (heals HP/PP), Scout Paws (hints)
+- **5 enemies + final boss** — Rogue Firewall, Spam Goblin, Buffer Overflow, Trojan Mouse, Kernel Panic, and the **MEGA VIRUS** (200 HP)
+- **PSI abilities** — Purr Blast, Yarn Storm, Cat Nap (heal)
+- **Items** — Tuna Can, Catnip, Milk
+- **Leveling system** — EXP, stat growth, level-up fanfare
+- **Full chiptune audio** — Web Audio API oscillators for every action
+- **Win condition** — Defeat the MEGA VIRUS in the southern fields
+
+**Controls:** Arrow keys / WASD to move, Z to confirm, X to cancel, ESC to exit
+
+</details>
+
+This is the killer feature. Trust through observability — and a hidden RPG when you need a break.
+
+---
+
 ## Security
 
 - API keys are stored in the OS-native keychain (Windows Credential Manager / macOS Keychain / Linux Secret Service)

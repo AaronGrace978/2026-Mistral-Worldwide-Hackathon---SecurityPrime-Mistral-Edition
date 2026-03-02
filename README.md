@@ -185,7 +185,13 @@ Open-source libraries and APIs are credited in [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+Copyright © 2026 Aaron Grace  
+All rights reserved.
+
+No part of this repository, including code, documentation, or assets, may be reproduced, distributed, modified, or used for commercial purposes without express written permission from the author.  
+Unauthorized copying, selling, or rebranding is prohibited. For Hackathon Judging only - This Includes BostonAi.io's Windows Version
+
+ [LICENSE]
 
 ---
 
